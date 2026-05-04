@@ -10,12 +10,23 @@ import IVisual = powerbi.extensibility.visual.IVisual;
 import IVisualHost = powerbi.extensibility.visual.IVisualHost;
 import IVisualEventService = powerbi.extensibility.IVisualEventService;
 import ISelectionManager = powerbi.extensibility.ISelectionManager;
+import ISelectionId = powerbi.visuals.ISelectionId;
 import ITooltipService = powerbi.extensibility.ITooltipService;
 import VisualTooltipDataItem = powerbi.extensibility.VisualTooltipDataItem;
 import ILocalizationManager = powerbi.extensibility.ILocalizationManager;
 import DataView = powerbi.DataView;
 
-import { VisualFormattingSettingsModel } from "./settings";
+import { VisualFormattingSettingsModel, alignSelfFor, textAlignFor } from "./settings";
+
+interface FontFmt { fontFamily?: { value?: string }; fontSize?: { value?: number }; bold?: { value?: boolean }; italic?: { value?: boolean }; underline?: { value?: boolean }; }
+
+function applyFont(el: HTMLElement, f: FontFmt): void {
+    if (f.fontFamily?.value) el.style.fontFamily = f.fontFamily.value;
+    if (typeof f.fontSize?.value === "number") el.style.fontSize = `${f.fontSize.value}pt`;
+    el.style.fontWeight = f.bold?.value ? "700" : "400";
+    el.style.fontStyle = f.italic?.value ? "italic" : "normal";
+    el.style.textDecoration = f.underline?.value ? "underline" : "none";
+}
 import { CODEX_TOKENS } from "./utils";
 
 interface ParsedCard {
@@ -41,8 +52,12 @@ export class Visual implements IVisual {
     // State for tooltips
     private cardTooltipItems: VisualTooltipDataItem[] = [];
 
+    // Selection ID for click-to-filter (1180.2.2.3)
+    private currentSelectionId: ISelectionId | null = null;
+
     // DOM elements
     private container: HTMLElement;
+    private titleEl: HTMLElement;
     private labelEl: HTMLElement;
     private valueEl: HTMLElement;
     private subtitleEl: HTMLElement;
@@ -63,6 +78,10 @@ export class Visual implements IVisual {
         this.container = document.createElement("div");
         this.container.className = "os-kpi-card";
 
+        this.titleEl = document.createElement("div");
+        this.titleEl.className = "os-kpi-title";
+        this.titleEl.style.display = "none";
+
         this.labelEl = document.createElement("div");
         this.labelEl.className = "os-kpi-label";
 
@@ -82,6 +101,7 @@ export class Visual implements IVisual {
         this.pillEl.appendChild(this.pillArrow);
         this.pillEl.appendChild(this.pillText);
 
+        this.container.appendChild(this.titleEl);
         this.container.appendChild(this.labelEl);
         this.container.appendChild(this.valueEl);
         this.container.appendChild(this.subtitleEl);
@@ -92,6 +112,16 @@ export class Visual implements IVisual {
         this.container.addEventListener("contextmenu", (e: MouseEvent) => {
             this.selectionManager.showContextMenu({}, { x: e.clientX, y: e.clientY });
             e.preventDefault();
+        });
+
+        // Click-to-filter (1180.2.2.3 Filter Out) — when a Category is bound,
+        // clicking the card filters other visuals on the page by that category.
+        // Without a category bound, click is a no-op (matches built-in card behaviour).
+        this.container.addEventListener("click", (e: MouseEvent) => {
+            if (this.currentSelectionId) {
+                this.selectionManager.select(this.currentSelectionId, e.ctrlKey || e.metaKey);
+                e.stopPropagation();
+            }
         });
 
         // Tooltip on card body
@@ -132,10 +162,25 @@ export class Visual implements IVisual {
                 return;
             }
 
+            // Capture selection ID for click-to-filter (1180.2.2.3)
+            this.currentSelectionId = null;
+            try {
+                if (dataView.table && dataView.table.identity && dataView.table.identity.length > 0) {
+                    this.currentSelectionId = this.host.createSelectionIdBuilder()
+                        .withTable(dataView.table, 0)
+                        .createSelectionId();
+                }
+            } catch {
+                this.currentSelectionId = null;
+            }
+            this.container.style.cursor = this.currentSelectionId ? "pointer" : "default";
+
             const cardStyle = this.formattingSettings.cardStyle;
+            const titleFmt = this.formattingSettings.titleSettings;
             const valFmt = this.formattingSettings.valueFormat;
             const changeFmt = this.formattingSettings.changeSettings;
-            const labelFmt = this.formattingSettings.labelSettings;
+            const labelFmt = this.formattingSettings.labelStyle;
+            const subtitleFmt = this.formattingSettings.subtitleStyle;
 
             // ─── High contrast support ─────────────────────
             const colorPalette = this.host.colorPalette as any;
@@ -156,12 +201,37 @@ export class Visual implements IVisual {
                 this.container.style.borderTop = `4px solid ${accentColor}`;
             }
 
+            // ─── Title (iframe-internal, Policy 1180.2.5) ──
+            if (titleFmt.showTitle.value && titleFmt.titleText.value) {
+                this.titleEl.textContent = String(titleFmt.titleText.value);
+                this.titleEl.style.color = isHighContrast
+                    ? (colorPalette.foreground?.value || titleFmt.titleColor.value.value)
+                    : titleFmt.titleColor.value.value;
+                applyFont(this.titleEl, {
+                    fontFamily: titleFmt.titleFontFamily,
+                    fontSize: titleFmt.titleFontSize,
+                    bold: titleFmt.titleBold,
+                    italic: titleFmt.titleItalic,
+                    underline: titleFmt.titleUnderline,
+                });
+                const titleAlignVal = String((titleFmt as any).titleAlign?.value || "left");
+                this.titleEl.style.alignSelf = alignSelfFor(titleAlignVal);
+                this.titleEl.style.textAlign = textAlignFor(titleAlignVal);
+                this.titleEl.style.display = "";
+            } else {
+                this.titleEl.style.display = "none";
+            }
+
             // ─── Label ──────────────────────────────────────
+            const labelAlignVal = String((labelFmt as any).labelAlign?.value || "left");
             if (data.label) {
                 this.labelEl.textContent = String(data.label);
                 this.labelEl.style.color = isHighContrast
                     ? (colorPalette.foreground?.value || labelFmt.labelColor.value.value)
                     : labelFmt.labelColor.value.value;
+                applyFont(this.labelEl, labelFmt as unknown as FontFmt);
+                this.labelEl.style.alignSelf = alignSelfFor(labelAlignVal);
+                this.labelEl.style.textAlign = textAlignFor(labelAlignVal);
                 this.labelEl.style.display = "";
             } else {
                 this.labelEl.style.display = "none";
@@ -173,26 +243,34 @@ export class Visual implements IVisual {
             const currency = valFmt.currencySymbol.value || "$";
             const fontSize = valFmt.fontSize.value;
 
+            const valueAlignVal = String((valFmt as any).valueAlign?.value || "left");
             this.valueEl.textContent = this.formatDisplayValue(data.value, fmtType, decimals, currency);
             this.valueEl.style.color = isHighContrast
                 ? (colorPalette.foreground?.value || data.textColour || valFmt.valueColor.value.value)
                 : (data.textColour || valFmt.valueColor.value.value);
-            this.valueEl.style.fontSize = `${fontSize}px`;
+            applyFont(this.valueEl, valFmt as unknown as FontFmt);
+            this.valueEl.style.alignSelf = alignSelfFor(valueAlignVal);
+            this.valueEl.style.textAlign = textAlignFor(valueAlignVal);
 
-            // Responsive font scaling
+            // Responsive font scaling — only kick in when viewport is too narrow
+            // for the user-set font size; otherwise honour the format pane value.
             const vw = options.viewport.width;
             if (vw < 120) {
-                this.valueEl.style.fontSize = `${Math.max(14, fontSize * 0.5)}px`;
+                this.valueEl.style.fontSize = `${Math.max(14, fontSize * 0.5)}pt`;
             } else if (vw < 200) {
-                this.valueEl.style.fontSize = `${Math.max(16, fontSize * 0.7)}px`;
+                this.valueEl.style.fontSize = `${Math.max(16, fontSize * 0.7)}pt`;
             }
 
             // ─── Subtitle ──────────────────────────────────
+            const subtitleAlignVal = String((subtitleFmt as any).subtitleAlign?.value || "left");
             if (data.subtitle) {
                 this.subtitleEl.textContent = String(data.subtitle);
                 this.subtitleEl.style.color = isHighContrast
-                    ? (colorPalette.foreground?.value || labelFmt.subtitleColor.value.value)
-                    : labelFmt.subtitleColor.value.value;
+                    ? (colorPalette.foreground?.value || subtitleFmt.subtitleColor.value.value)
+                    : subtitleFmt.subtitleColor.value.value;
+                applyFont(this.subtitleEl, subtitleFmt as unknown as FontFmt);
+                this.subtitleEl.style.alignSelf = alignSelfFor(subtitleAlignVal);
+                this.subtitleEl.style.textAlign = textAlignFor(subtitleAlignVal);
                 this.subtitleEl.style.display = "";
             } else {
                 this.subtitleEl.style.display = "none";
@@ -229,10 +307,13 @@ export class Visual implements IVisual {
                     ? String(data.changeLabel)
                     : this.autoFormatChange(cv);
 
+                const changeAlignVal = String((changeFmt as any).changeAlign?.value || "left");
                 this.pillArrow.textContent = arrow;
                 this.pillText.textContent = " " + pillTextStr;
                 this.pillEl.style.backgroundColor = pillBg;
                 this.pillEl.style.color = pillColor;
+                applyFont(this.pillEl, changeFmt as unknown as FontFmt);
+                this.pillEl.style.alignSelf = alignSelfFor(changeAlignVal);
                 this.pillEl.style.display = "";
             } else {
                 this.pillEl.style.display = "none";
@@ -268,6 +349,7 @@ export class Visual implements IVisual {
     public destroy(): void {
         // Clean up DOM references
         this.container = null;
+        this.titleEl = null;
         this.labelEl = null;
         this.valueEl = null;
         this.subtitleEl = null;
@@ -367,6 +449,7 @@ export class Visual implements IVisual {
 
     private renderEmpty(): void {
         this.cardTooltipItems = [];
+        this.titleEl.style.display = "none";
         this.labelEl.style.display = "none";
         this.subtitleEl.style.display = "none";
         this.pillEl.style.display = "none";

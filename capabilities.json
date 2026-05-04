@@ -1,6 +1,12 @@
 {
     "dataRoles": [
         {
+            "displayName": "Category",
+            "name": "category",
+            "description": "Optional grouping column. When bound, clicking the card filters other visuals by this category.",
+            "kind": "Grouping"
+        },
+        {
             "displayName": "Value",
             "name": "value",
             "description": "Primary metric to display (e.g. 23, 87.3%, $14,100, 5RSOUTH)",
@@ -47,12 +53,26 @@
         }
     ],
     "objects": {
-        "cardStyle": {
+        "titleSettings": {
+            "displayName": "Visual Title",
             "properties": {
-                "accentColor": {
-                    "type": { "fill": { "solid": { "color": true } } }
-                },
+                "showTitle": { "displayName": "Show Title", "type": { "bool": true } },
+                "titleText": { "displayName": "Title Text", "type": { "text": true } },
+                "titleFontFamily": { "displayName": "Font Family", "type": { "formatting": { "fontFamily": true } } },
+                "titleFontSize": { "displayName": "Font Size", "type": { "formatting": { "fontSize": true } } },
+                "titleBold": { "displayName": "Bold", "type": { "bool": true } },
+                "titleItalic": { "displayName": "Italic", "type": { "bool": true } },
+                "titleUnderline": { "displayName": "Underline", "type": { "bool": true } },
+                "titleAlign": { "displayName": "Alignment", "type": { "formatting": { "alignment": true } } },
+                "titleColor": { "displayName": "Font Color", "type": { "fill": { "solid": { "color": true } } } }
+            }
+        },
+        "cardStyle": {
+            "displayName": "Card Style",
+            "properties": {
+                "accentColor": { "displayName": "Accent Colour", "type": { "fill": { "solid": { "color": true } } } },
                 "accentPosition": {
+                    "displayName": "Accent Position",
                     "type": {
                         "enumeration": [
                             { "displayName": "Left", "value": "left" },
@@ -61,14 +81,14 @@
                         ]
                     }
                 },
-                "backgroundColor": {
-                    "type": { "fill": { "solid": { "color": true } } }
-                }
+                "backgroundColor": { "displayName": "Background Colour", "type": { "fill": { "solid": { "color": true } } } }
             }
         },
         "valueFormat": {
+            "displayName": "Value Format",
             "properties": {
                 "valueFormatType": {
+                    "displayName": "Format",
                     "type": {
                         "enumeration": [
                             { "displayName": "Number", "value": "number" },
@@ -78,23 +98,22 @@
                         ]
                     }
                 },
-                "currencySymbol": {
-                    "type": { "text": true }
-                },
-                "decimalPlaces": {
-                    "type": { "numeric": true }
-                },
-                "fontSize": {
-                    "type": { "numeric": true }
-                },
-                "valueColor": {
-                    "type": { "fill": { "solid": { "color": true } } }
-                }
+                "currencySymbol": { "displayName": "Currency Symbol", "type": { "text": true } },
+                "decimalPlaces": { "displayName": "Decimal Places", "type": { "numeric": true } },
+                "fontFamily": { "displayName": "Font Family", "type": { "formatting": { "fontFamily": true } } },
+                "fontSize": { "displayName": "Font Size", "type": { "formatting": { "fontSize": true } } },
+                "bold": { "displayName": "Bold", "type": { "bool": true } },
+                "italic": { "displayName": "Italic", "type": { "bool": true } },
+                "underline": { "displayName": "Underline", "type": { "bool": true } },
+                "valueColor": { "displayName": "Value Colour", "type": { "fill": { "solid": { "color": true } } } },
+                "valueAlign": { "displayName": "Alignment", "type": { "formatting": { "alignment": true } } }
             }
         },
         "changeSettings": {
+            "displayName": "Change Indicator",
             "properties": {
                 "changeDirection": {
+                    "displayName": "Direction Logic",
                     "type": {
                         "enumeration": [
                             { "displayName": "Up is Good", "value": "upIsGood" },
@@ -103,19 +122,37 @@
                         ]
                     }
                 },
-                "showChange": {
-                    "type": { "bool": true }
-                }
+                "showChange": { "displayName": "Show Change Pill", "type": { "bool": true } },
+                "fontFamily": { "displayName": "Font Family", "type": { "formatting": { "fontFamily": true } } },
+                "fontSize": { "displayName": "Font Size", "type": { "formatting": { "fontSize": true } } },
+                "bold": { "displayName": "Bold", "type": { "bool": true } },
+                "italic": { "displayName": "Italic", "type": { "bool": true } },
+                "underline": { "displayName": "Underline", "type": { "bool": true } },
+                "changeAlign": { "displayName": "Alignment", "type": { "formatting": { "alignment": true } } }
             }
         },
-        "labelSettings": {
+        "labelStyle": {
+            "displayName": "Label",
             "properties": {
-                "labelColor": {
-                    "type": { "fill": { "solid": { "color": true } } }
-                },
-                "subtitleColor": {
-                    "type": { "fill": { "solid": { "color": true } } }
-                }
+                "fontFamily": { "displayName": "Font Family", "type": { "formatting": { "fontFamily": true } } },
+                "fontSize": { "displayName": "Font Size", "type": { "formatting": { "fontSize": true } } },
+                "bold": { "displayName": "Bold", "type": { "bool": true } },
+                "italic": { "displayName": "Italic", "type": { "bool": true } },
+                "underline": { "displayName": "Underline", "type": { "bool": true } },
+                "labelColor": { "displayName": "Label Colour", "type": { "fill": { "solid": { "color": true } } } },
+                "labelAlign": { "displayName": "Alignment", "type": { "formatting": { "alignment": true } } }
+            }
+        },
+        "subtitleStyle": {
+            "displayName": "Subtitle",
+            "properties": {
+                "fontFamily": { "displayName": "Font Family", "type": { "formatting": { "fontFamily": true } } },
+                "fontSize": { "displayName": "Font Size", "type": { "formatting": { "fontSize": true } } },
+                "bold": { "displayName": "Bold", "type": { "bool": true } },
+                "italic": { "displayName": "Italic", "type": { "bool": true } },
+                "underline": { "displayName": "Underline", "type": { "bool": true } },
+                "subtitleColor": { "displayName": "Subtitle Colour", "type": { "fill": { "solid": { "color": true } } } },
+                "subtitleAlign": { "displayName": "Alignment", "type": { "formatting": { "alignment": true } } }
             }
         }
     },
@@ -123,6 +160,7 @@
         {
             "conditions": [
                 {
+                    "category": { "max": 1 },
                     "value": { "max": 1 },
                     "label": { "max": 1 },
                     "subtitle": { "max": 1 },
@@ -135,6 +173,7 @@
             "table": {
                 "rows": {
                     "select": [
+                        { "for": { "in": "category" } },
                         { "for": { "in": "value" } },
                         { "for": { "in": "label" } },
                         { "for": { "in": "subtitle" } },
