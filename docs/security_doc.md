@@ -1,31 +1,46 @@
-# Security Statement for optiStockKpiCard
+# Security Document – Codex KPI Card
 
-## External Network Access
-The visual does not make any external network calls. It does not use `fetch`, `XMLHttpRequest`, or any other communication APIs. The `externalJS` section in `pbiviz.json` is null, confirming no external JavaScript is loaded.
+## Overview
+This document describes the security characteristics of the **Codex KPI Card** Power BI custom visual. It confirms compliance with Microsoft's security and certification requirements.
 
-## Telemetry
-The visual does not implement any telemetry or data collection mechanisms. It does not send usage data to any external or internal endpoints.
+## 1. External Network Access
+**The visual does not make any external network calls.**
+- No HTTP/HTTPS requests
+- No WebSockets
+- No external APIs
+- No remote JSON, images, fonts, or scripts
 
-## Data Handling
-The visual only processes data passed to it via the Power BI data view. It does not store, cache, or persist any data beyond the lifetime of the visual instance. All data is held in memory and released when the visual is destroyed or updated.
+All resources are bundled within the `.pbiviz` package.
 
-## Script Safety
-The visual does not use `eval()`, `Function()`, `setTimeout()` with string arguments, or `setInterval()` with string arguments. All DOM manipulation is performed via safe methods: `createElement`, `appendChild`, `textContent`, and `setAttribute`. The visual avoids `innerHTML` except for setting text content via `textContent`.
+## 2. Telemetry and Data Collection
+**The visual does not collect, store, transmit, or log any user data.**
+- No telemetry
+- No analytics
+- No usage tracking
+- No cookies or local storage
 
-## Cross-Visual Interaction
-The visual supports highlighting and cross-filtering:
-- When a **Category** field is bound, clicking the card emits a selection event that filters other visuals on the report page by that category (using `ISelectionManager.select`).
-- Without a bound Category, clicking the card is a no-op, matching the behavior of the built-in KPI visual.
-- The visual also supports context menus (right-click) via `selectionManager.showContextMenu`.
+## 3. Data Handling
+- The visual does not store data outside the Power BI sandbox.
+- The visual does not persist data to disk.
+- The visual does not send data to external systems.
+- All data stays within the Power BI host environment.
 
-## Dependencies
-The visual relies only on the following approved Power BI dependencies:
-- `powerbi-visuals-api`
-- `powerbi-visuals-utils-formattingmodel`
-No additional libraries or dependencies are included.
+## 4. Script and Code Safety
+- No use of `eval()`, `Function()`, or dynamic code execution.
+- No injection of external scripts or styles.
+- No DOM escape or manipulation outside the visual container.
 
-## Permissions
-The visual does not request any special privileges. The `privileges` array in `capabilities.json` is empty.
+## 5. Cross-Visual Interaction
+- The visual communicates with other visuals only through official Power BI APIs (ISelectionManager).
+- No custom messaging or cross-iframe communication.
 
-## Summary
-optiStockKpiCard is a secure, self-contained Power BI visual that adheres to Microsoft's security guidelines for custom visuals. It performs no external communication, telemetry, or data storage, and uses only safe DOM APIs for rendering.
+## 6. Dependencies
+- No external libraries loaded at runtime.
+- All JS/CSS/SVG assets bundled locally.
+- No external fonts.
+
+## 7. Permissions
+The visual does not request elevated permissions.
+
+## 8. Summary
+**Codex KPI Card** is sandbox-compliant, contains no external dependencies, performs no external communication, and adheres to all Microsoft Power BI security requirements.
