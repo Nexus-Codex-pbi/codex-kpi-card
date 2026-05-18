@@ -1,10 +1,10 @@
 {
   "name": "visual",
-  "description": "OptiStock KPI Card with value, subtitle, change indicator pill, and accent border",
+  "description": "Codex KPI Card with value, subtitle, change indicator pill, and accent border",
   "version": "1.1.0.8",
   "repository": {
     "type": "git",
-    "url": "https://github.com/nexusai/optistock-kpi-card"
+    "url": "https://github.com/nexusai/codex-kpi-card"
   },
   "license": "MIT",
   "scripts": {
