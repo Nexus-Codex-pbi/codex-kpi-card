@@ -48,3 +48,20 @@
 - [ ] Bind a measure, open the fx rule editor, set a rule (e.g. gradient by value)
 - [ ] Card's value text colour changes according to the rule as the bound measure's value changes
 - [ ] Removing the rule reverts to the static Value Colour swatch setting
+
+## 9. Visual Title — show/hide, font, alignment (TEXT-01/02, TITLE-01, Phase 1 Plan 10 pilot — now via _shared v2)
+- [ ] Format pane → Visual Title card: Show Title toggle is OFF by default; no title renders and no layout shift occurs
+- [ ] Toggle Show Title on with Title Text blank: no title renders (both showTitle AND titleText must be truthy per the render gate)
+- [ ] Set Title Text with Show Title on: title renders inside the visual's own iframe (not the host chrome title bar)
+- [ ] Font Family / Font Size / Bold / Italic / Underline (Font composite) all apply to the rendered title
+- [ ] Alignment (left/center/right) moves the title's flex position (alignSelf) and text alignment (textAlign) together
+- [ ] Font Color swatch changes the rendered title colour
+- [ ] An old saved .pbix (pre-upgrade, titleSettings properties absent) renders with no title — pixel-identical to before this change (render-nothing default, D-06/D-14)
+
+## 10. Visual Title — conditional formatting (fx)
+- [ ] Font Color swatch (Visual Title card) shows a working fx button in the format pane (instanceKind ConstantOrRule)
+- [ ] Bind a measure, set a colour rule, confirm the fx button is present (static resolution proven via the shared Value Colour pattern; per-rule visual verification pending Power BI Desktop sideload)
+
+## 11. _shared v2 cross-directory import proof (D-10 re-proof)
+- [ ] `npx pbiviz package` exits 0 with settings.ts importing TitleSettings + alignment helpers from `../../_shared/formatting/` (no inline duplicates remaining)
+- [ ] Resulting `.pbiviz` sideloads and renders identically to the pre-refactor build for all existing (non-title) formatting cards
