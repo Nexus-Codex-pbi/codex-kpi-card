@@ -7,6 +7,8 @@ import FormattingSettingsCard = formattingSettings.SimpleCard;
 import FormattingSettingsSlice = formattingSettings.Slice;
 import FormattingSettingsModel = formattingSettings.Model;
 
+import { BackgroundSettings } from "../../_shared/formatting/backgroundSettings";
+
 const ConstantOrRule = powerbi.VisualEnumerationInstanceKinds.ConstantOrRule;
 
 // ─── Alignment helpers (mirrors _template-codex pattern) ────
@@ -280,6 +282,7 @@ export class SubtitleStyleSettings extends FormattingSettingsCard {
 export class VisualFormattingSettingsModel extends FormattingSettingsModel {
     titleSettings = new TitleSettings();
     cardStyle = new CardStyleSettings();
+    background = new BackgroundSettings();
     valueFormat = new ValueFormatSettings();
     changeSettings = new ChangeSettings();
     labelStyle = new LabelStyleSettings();
@@ -288,6 +291,7 @@ export class VisualFormattingSettingsModel extends FormattingSettingsModel {
     cards: FormattingSettingsCard[] = [
         this.titleSettings,
         this.cardStyle,
+        this.background,
         this.valueFormat,
         this.changeSettings,
         this.labelStyle,

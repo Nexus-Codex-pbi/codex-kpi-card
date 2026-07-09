@@ -34,3 +34,17 @@
 - [ ] Demonstrates all features
 - [ ] Demonstrates formatting options
 - [ ] Demonstrates interactions
+
+## 7. Background Transparency (TRANS-01, Phase 1 Plan 03 pilot)
+- [ ] Format pane → Background card: set a non-white colour, drag Transparency 0 → 50 → 100 over a NON-WHITE report canvas
+- [ ] Transparency 0%: card renders fully opaque
+- [ ] Transparency 50%: card blends visibly with the canvas behind it, no opaque halo/box around the visual edges
+- [ ] Transparency 100%: canvas shows through cleanly, card content (value/label) remains legible
+- [ ] Repeat on both light and dark report themes — selection/highlight chrome stays legible on both
+- [ ] An old saved .pbix (pre-upgrade, Background properties absent) renders fully opaque/unchanged — no regression
+
+## 8. Conditional Formatting / fx (TRANS-04, Phase 1 Plan 03 pilot)
+- [ ] Value Colour swatch (Value Format card) shows a working fx button in the format pane
+- [ ] Bind a measure, open the fx rule editor, set a rule (e.g. gradient by value)
+- [ ] Card's value text colour changes according to the rule as the bound measure's value changes
+- [ ] Removing the rule reverts to the static Value Colour swatch setting

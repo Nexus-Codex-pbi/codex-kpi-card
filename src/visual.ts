@@ -16,7 +16,11 @@ import VisualTooltipDataItem = powerbi.extensibility.VisualTooltipDataItem;
 import ILocalizationManager = powerbi.extensibility.ILocalizationManager;
 import DataView = powerbi.DataView;
 
+import { dataViewWildcard } from "powerbi-visuals-utils-dataviewutils";
+import { ColorHelper } from "powerbi-visuals-utils-colorutils";
+
 import { VisualFormattingSettingsModel, alignSelfFor, textAlignFor } from "./settings";
+import { toRgba } from "../../_shared/formatting/colorHelpers";
 
 interface FontFmt { fontFamily?: { value?: string }; fontSize?: { value?: number }; bold?: { value?: boolean }; italic?: { value?: boolean }; underline?: { value?: boolean }; }
 
@@ -176,18 +180,55 @@ export class Visual implements IVisual {
             this.container.style.cursor = this.currentSelectionId ? "pointer" : "default";
 
             const cardStyle = this.formattingSettings.cardStyle;
+            const background = this.formattingSettings.background;
             const titleFmt = this.formattingSettings.titleSettings;
             const valFmt = this.formattingSettings.valueFormat;
             const changeFmt = this.formattingSettings.changeSettings;
             const labelFmt = this.formattingSettings.labelStyle;
             const subtitleFmt = this.formattingSettings.subtitleStyle;
 
+            // ─── Conditional formatting (fx) wiring — Value Colour (TRANS-04) ──
+            // Genuinely new work (Pitfall 5): a bare `instanceKind: ConstantOrRule`
+            // declaration does NOT make the fx button functional. It also requires
+            // a `selector` (dataViewWildcard, so the rule can match this measure's
+            // instances/totals) and an `altConstantSelector` bound to a concrete
+            // per-instance selectionId — Microsoft's documented getFormattingModel
+            // conditional-formatting pattern, applied here via the
+            // powerbi-visuals-utils-formattingmodel Slice's own selector/
+            // altConstantSelector fields (which the service maps to the raw
+            // FormattingModel API's `selector`/`altConstantValueSelector`).
+            valFmt.valueColor.selector = dataViewWildcard.createDataViewWildcardSelector(
+                dataViewWildcard.DataViewWildcardMatchingOption.InstancesAndTotals
+            );
+            valFmt.valueColor.altConstantSelector = this.currentSelectionId
+                ? this.currentSelectionId.getSelector()
+                : undefined;
+
+            // Resolve the rule's per-instance colour (if a rule is set) via the
+            // official ColorHelper.getColorForMeasure path: reads the resolved
+            // fill from dataView.metadata.objects when a rule has been evaluated
+            // by the host, falling back to the static format-pane value otherwise.
+            const valueColorHelper = new ColorHelper(
+                this.host.colorPalette,
+                { objectName: "valueFormat", propertyName: "valueColor" },
+                valFmt.valueColor.value.value
+            );
+            const resolvedValueColor = valueColorHelper.getColorForMeasure(dataView.metadata?.objects, "value");
+
             // ─── High contrast support ─────────────────────
             const colorPalette = this.host.colorPalette as any;
             const isHighContrast = colorPalette && colorPalette.isHighContrast;
 
             // ─── Container styling ─────────────────────────
-            const bgColor = cardStyle.backgroundColor.value.value;
+            // Dedicated background layer (D-05: never whole-root/target opacity —
+            // this.container is an inner div, never this.target/options.element).
+            // Reads the new shared Background card (colour + 0-100% transparency)
+            // through the frozen toRgba() wrapper. `?? default` on both reads
+            // means an OLD saved report (properties undefined) renders fully
+            // opaque white — the pre-existing default — per D-06.
+            const bgHex = background.backgroundColor.value?.value ?? "#ffffff";
+            const bgTransparencyPct = background.transparency.value ?? 0;
+            const bgColor = toRgba(bgHex, bgTransparencyPct);
             const accentColor = data.accentColour || cardStyle.accentColor.value.value;
             const accentPos = String(cardStyle.accentPosition.value?.value || "left");
 
@@ -246,8 +287,8 @@ export class Visual implements IVisual {
             const valueAlignVal = String((valFmt as any).valueAlign?.value || "left");
             this.valueEl.textContent = this.formatDisplayValue(data.value, fmtType, decimals, currency);
             this.valueEl.style.color = isHighContrast
-                ? (colorPalette.foreground?.value || data.textColour || valFmt.valueColor.value.value)
-                : (data.textColour || valFmt.valueColor.value.value);
+                ? (colorPalette.foreground?.value || data.textColour || resolvedValueColor)
+                : (data.textColour || resolvedValueColor);
             applyFont(this.valueEl, valFmt as unknown as FontFmt);
             this.valueEl.style.alignSelf = alignSelfFor(valueAlignVal);
             this.valueEl.style.textAlign = textAlignFor(valueAlignVal);
