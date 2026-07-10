@@ -24,6 +24,7 @@ import { toRgba } from "./shared/colorHelpers";
 import { Band, Theme, accentToken, bandColor } from "./shared/bandEngine";
 import { surfaceTokens, TABULAR_NUMS } from "./shared/designTokens";
 import { makeCornerBrackets, CardSignatureHandle } from "./shared/cardSignature";
+import { applyCardSignature } from "./shared/cardSignatureSettings";
 import { settle } from "./shared/motion";
 import { applyHighContrast, statusGlyph } from "./shared/highContrast";
 
@@ -274,9 +275,7 @@ export class Visual implements IVisual {
             valFmt.valueColor.selector = dataViewWildcard.createDataViewWildcardSelector(
                 dataViewWildcard.DataViewWildcardMatchingOption.InstancesAndTotals
             );
-            valFmt.valueColor.altConstantSelector = this.currentSelectionId
-                ? this.currentSelectionId.getSelector()
-                : undefined;
+            valFmt.valueColor.altConstantSelector = undefined; // card-level constant persistence: swatch edits apply to ALL instances + round-trip into the pane (first-instance binding persisted a row-0-only override); fx rules stay per-instance via the wildcard selector;
 
             // Resolve the rule's per-instance colour (if a rule is set) via the
             // official ColorHelper.getColorForMeasure path: reads the resolved
@@ -341,8 +340,10 @@ export class Visual implements IVisual {
             const glowMix = hc.active ? 0 : (theme === "dark" ? 55 : 0);
 
             // Corner-bracket signature re-tint (created once in the constructor).
-            this.cornerSignature?.update(cornerColor, {
-                variant: "cornerBracket",
+            applyCardSignature(this.cornerSignature, this.formattingSettings.cardSignature, {
+                autoHex: signalHex,
+                hcActive: hc.active,
+                hcColor: hcColor,
                 mirror: true,
                 glowMix,
                 muted: false,
@@ -679,6 +680,6 @@ export class Visual implements IVisual {
         this.container.style.borderColor = "";
         this.container.style.boxShadow = "none";
         this.container.style.backgroundColor = "#ffffff";
-        this.cornerSignature?.update("#8f8ab8", { variant: "cornerBracket", mirror: true, muted: true });
+        applyCardSignature(this.cornerSignature, this.formattingSettings?.cardSignature, { autoHex: "#8f8ab8", mirror: true, muted: true });
     }
 }

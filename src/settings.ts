@@ -10,6 +10,7 @@ import FormattingSettingsModel = formattingSettings.Model;
 import { BackgroundSettings } from "./shared/backgroundSettings";
 import { TitleSettings } from "./shared/titleSettings";
 import { alignSlice, alignSelfFor, textAlignFor } from "./shared/textFormatting";
+import { CardSignatureSettings } from "./shared/cardSignatureSettings";
 
 const ConstantOrRule = powerbi.VisualEnumerationInstanceKinds.ConstantOrRule;
 
@@ -248,6 +249,7 @@ export class SubtitleStyleSettings extends FormattingSettingsCard {
 
 // ─── Model ──────────────────────────────────────────────────
 export class VisualFormattingSettingsModel extends FormattingSettingsModel {
+    cardSignature = new CardSignatureSettings();
     titleSettings = new TitleSettings();
     cardStyle = new CardStyleSettings();
     background = new BackgroundSettings();
@@ -263,6 +265,7 @@ export class VisualFormattingSettingsModel extends FormattingSettingsModel {
         this.valueFormat,
         this.changeSettings,
         this.labelStyle,
-        this.subtitleStyle
+        this.subtitleStyle,
+        this.cardSignature
     ];
 }
