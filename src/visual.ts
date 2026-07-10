@@ -188,7 +188,11 @@ export class Visual implements IVisual {
         });
 
         // Context menu support
-        this.container.addEventListener("contextmenu", (e: MouseEvent) => {
+        // Bound to the visual ROOT (options.element), not the inner
+        // container — container-only binding leaves any uncovered pixel a
+        // dead zone for Policy 1180.2.5 (the old cert-report failure class;
+        // caught by verify-pbiviz.js's root-dispatch check).
+        this.target.addEventListener("contextmenu", (e: MouseEvent) => {
             this.selectionManager.showContextMenu({}, { x: e.clientX, y: e.clientY });
             e.preventDefault();
         });
