@@ -19,6 +19,14 @@ const ConstantOrRule = powerbi.VisualEnumerationInstanceKinds.ConstantOrRule;
 export { TitleSettings, alignSlice, alignSelfFor, textAlignFor };
 
 // ─── Card Style ─────────────────────────────────────────────
+// v3 appearance engine pilot (Plan 15, D-16): accentColor is still the
+// classic left/top border colour AND now doubles as the fallback tint
+// for the new corner-bracket signature/dot/target-strip whenever no
+// band colour applies (no Change Value bound, or Direction Logic is
+// Neutral) — see visual.ts's `signalHex` resolution. No new capabilities
+// were added for this pilot; the v2 look ships via new DEFAULT chrome
+// only, so existing saved-report bindings on these two properties are
+// untouched (additive-only, no schema churn).
 export class CardStyleSettings extends FormattingSettingsCard {
     name = "cardStyle";
     displayName = "Card Style";
@@ -122,6 +130,12 @@ export class ValueFormatSettings extends FormattingSettingsCard {
 }
 
 // ─── Change Settings ────────────────────────────────────────
+// v3 appearance engine pilot (Plan 15, D-16): changeDirection now also
+// decides which _shared/formatting/bandEngine.ts token (success/danger)
+// tints the pill/dot/corner-bracket/target-strip together — a report
+// saved with the default "Down is Good" keeps reading a decrease as
+// success, deliberately NOT the band engine's literal directionColor()
+// sign read (see visual.ts's `deltaBand` derivation).
 export class ChangeSettings extends FormattingSettingsCard {
     name = "changeSettings";
     displayName = "Change Indicator";

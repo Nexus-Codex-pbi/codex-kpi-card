@@ -1,56 +1,91 @@
 /* Codex KPI Card */
-@font-stack: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+@font-stack: "Segoe UI", -apple-system, "Helvetica Neue", Arial, sans-serif;
 
+/* v2 board look (v3 appearance engine pilot, Plan 15, D-16): new
+   defaults deliberately change the look — 10px card radius (was 4px),
+   space-between vertical rhythm, and the header/footer/strip rows below
+   are new default chrome. Every colour that appears here is applied
+   inline from visual.ts (band engine / high-contrast / user format-pane
+   values) — this file only carries structural + typographic defaults. */
 .os-kpi-card {
+    position: relative;
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    justify-content: center;
+    justify-content: space-between;
     width: 100%;
     height: 100%;
-    padding: 12px 16px;
+    padding: 16px 20px 14px 24px;
     box-sizing: border-box;
     font-family: @font-stack;
     overflow: hidden;
-    border-radius: 4px;
+    border-radius: 10px;
+    border: 1px solid transparent;
+    transition: filter 160ms ease-out, box-shadow 160ms ease-out;
 }
 
 .os-kpi-title {
-    font-size: 14px;
-    font-weight: 700;
+    font-size: 13.5px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
     line-height: 1.3;
-    margin-bottom: 6px;
+    margin-bottom: 8px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     max-width: 100%;
 }
 
+.os-kpi-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    width: 100%;
+    margin-bottom: 4px;
+}
+
 .os-kpi-label {
-    font-size: 11px;
+    font-size: 10.5px;
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-bottom: 4px;
+    letter-spacing: 0.16em;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     max-width: 100%;
     line-height: 1.3;
+}
+
+.os-kpi-dot {
+    flex: 0 0 auto;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    box-sizing: border-box;
 }
 
 .os-kpi-value {
     font-size: 32px;
     font-weight: 700;
-    line-height: 1.1;
+    letter-spacing: -0.01em;
+    line-height: 0.95;
     white-space: nowrap;
-    margin-bottom: 2px;
+    margin-bottom: 6px;
+    font-feature-settings: "tnum";
+}
+
+.os-kpi-footer {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    width: 100%;
 }
 
 .os-kpi-subtitle {
-    font-size: 12px;
+    font-size: 12.5px;
     font-weight: 400;
-    margin-bottom: 6px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -61,15 +96,34 @@
 .os-kpi-pill {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
-    padding: 2px 10px;
-    border-radius: 12px;
-    font-size: 12px;
-    font-weight: 600;
-    line-height: 1.4;
+    gap: 5px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    font-size: 12.5px;
+    font-weight: 700;
+    line-height: 1.3;
     white-space: nowrap;
+    font-feature-settings: "tnum";
 }
 
 .os-pill-arrow {
     font-size: 10px;
+}
+
+.os-kpi-strip {
+    display: flex;
+    gap: 3px;
+    width: 100%;
+    margin-top: 9px;
+}
+
+.os-kpi-strip-seg {
+    flex: 1;
+    height: 6px;
+    border-radius: 2px;
+    box-sizing: border-box;
+}
+
+.codex-card-signature {
+    box-sizing: border-box;
 }
