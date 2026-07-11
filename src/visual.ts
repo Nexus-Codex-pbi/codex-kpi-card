@@ -399,17 +399,22 @@ export class Visual implements IVisual {
             } catch {
                 isSelected = false;
             }
+            // Selection ring — when the user's Border card is ON, the ring
+            // lives purely in box-shadow and never touches border props
+            // (this block was stomping applyBorder's colour/width,
+            // Neil 2026-07-12: "border not showing when set").
+            const userBorderOn = this.formattingSettings.visualBorder.show.value;
             if (isSelected) {
                 const ring = accentToken(theme);
-                this.container.style.borderColor = ring;
+                if (!userBorderOn) this.container.style.borderColor = ring;
                 this.container.style.boxShadow = hc.active
                     ? "none"
                     : `0 0 0 1px ${ring}, 0 0 18px color-mix(in srgb, ${ring} 30%, transparent)`;
             } else {
-                this.container.style.borderColor = "";
+                if (!userBorderOn) this.container.style.borderColor = "";
                 this.container.style.boxShadow = "none";
             }
-            this.container.style.borderWidth = `${hc.active ? hc.borderWidth : 1}px`;
+            if (!userBorderOn) this.container.style.borderWidth = `${hc.active ? hc.borderWidth : 1}px`;
 
             // ─── Title (iframe-internal, Policy 1180.2.5) ──
             if (titleFmt.showTitle.value && titleFmt.titleText.value) {
