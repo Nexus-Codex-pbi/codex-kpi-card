@@ -22,7 +22,8 @@ import { ColorHelper } from "powerbi-visuals-utils-colorutils";
 import { VisualFormattingSettingsModel, alignSelfFor, textAlignFor } from "./settings";
 import { toRgba } from "./shared/colorHelpers";
 import { Band, Theme, accentToken, bandColor } from "./shared/bandEngine";
-import { surfaceTokens, TABULAR_NUMS } from "./shared/designTokens";
+import { surfaceTokens, TABULAR_NUMS, mix } from "./shared/designTokens";
+import { applyBorder } from "./shared/borderSettings";
 import { makeCornerBrackets, CardSignatureHandle } from "./shared/cardSignature";
 import { applyCardSignature } from "./shared/cardSignatureSettings";
 import { settle } from "./shared/motion";
@@ -310,8 +311,16 @@ export class Visual implements IVisual {
             const accentPos = String(cardStyle.accentPosition.value?.value || "left");
 
             this.container.style.backgroundColor = bgColor;
-            this.container.style.borderLeft = "";
-            this.container.style.borderTop = "";
+            // Border card first (sets/clears all four sides), then the
+            // accent strip overrides its own edge below.
+            applyBorder(this.container, this.formattingSettings.visualBorder, {
+                hcActive: isHighContrast,
+                hcColor: colorPalette?.foreground?.value,
+            });
+            if (!this.formattingSettings.visualBorder.show.value) {
+                this.container.style.borderLeft = "";
+                this.container.style.borderTop = "";
+            }
 
             if (accentPos === "left") {
                 this.container.style.borderLeft = `4px solid ${accentColor}`;
@@ -321,7 +330,15 @@ export class Visual implements IVisual {
 
             // v3: theme pick + the single HC fallback rule, computed once and
             // reused everywhere colour is resolved below.
-            const theme: Theme = themeFor(bgHex);
+            // Theme-source ladder (suite standard, bullet chart v1.0.0.9):
+            // visible own background governs; a USER-SET hex governs even at
+            // full transparency; only the untouched default falls through to
+            // the report theme's palette background.
+            const bgHexIsUserSet = bgHex.toLowerCase() !== "#ffffff";
+            const themeSourceHex = (bgTransparencyPct < 100 || bgHexIsUserSet)
+                ? bgHex
+                : ((colorPalette && colorPalette.background && colorPalette.background.value) || bgHex);
+            const theme: Theme = themeFor(themeSourceHex);
             const hc = applyHighContrast(colorPalette, { fallbackColor: cardStyle.accentColor.value.value });
             const hcColor = hc.active ? hc.color : null;
 
@@ -412,7 +429,9 @@ export class Visual implements IVisual {
             const labelAlignVal = String((labelFmt as any).labelAlign?.value || "left");
             if (data.label) {
                 this.labelEl.textContent = String(data.label);
-                this.labelEl.style.color = hcColor || labelFmt.labelColor.value.value;
+                const adaptiveLabel = labelFmt.labelColor.value.value === "#5e5d5a" && theme === "dark"
+                    ? mix(surfaceTokens("dark").text, "#8f8ab8", 0.35) : labelFmt.labelColor.value.value;
+                this.labelEl.style.color = hcColor || adaptiveLabel;
                 applyFont(this.labelEl, labelFmt as unknown as FontFmt);
                 this.labelEl.style.alignSelf = alignSelfFor(labelAlignVal);
                 this.labelEl.style.textAlign = textAlignFor(labelAlignVal);
@@ -432,7 +451,9 @@ export class Visual implements IVisual {
             const displayValue = this.formatDisplayValue(data.value, fmtType, decimals, currency);
             this.valueEl.textContent = displayValue;
             this.valueEl.style.fontFeatureSettings = TABULAR_NUMS;
-            this.valueEl.style.color = hcColor || (data.textColour || resolvedValueColor);
+            const adaptiveValue = resolvedValueColor === "#130064" && theme === "dark"
+                ? surfaceTokens("dark").text : resolvedValueColor;
+            this.valueEl.style.color = hcColor || (data.textColour || adaptiveValue);
             applyFont(this.valueEl, valFmt as unknown as FontFmt);
             this.valueEl.style.alignSelf = alignSelfFor(valueAlignVal);
             this.valueEl.style.textAlign = textAlignFor(valueAlignVal);
@@ -460,7 +481,9 @@ export class Visual implements IVisual {
             const subtitleAlignVal = String((subtitleFmt as any).subtitleAlign?.value || "left");
             if (data.subtitle) {
                 this.subtitleEl.textContent = String(data.subtitle);
-                this.subtitleEl.style.color = hcColor || subtitleFmt.subtitleColor.value.value;
+                const adaptiveSubtitle = subtitleFmt.subtitleColor.value.value === "#767676" && theme === "dark"
+                    ? mix(surfaceTokens("dark").text, "#8f8ab8", 0.35) : subtitleFmt.subtitleColor.value.value;
+                this.subtitleEl.style.color = hcColor || adaptiveSubtitle;
                 applyFont(this.subtitleEl, subtitleFmt as unknown as FontFmt);
                 this.subtitleEl.style.alignSelf = alignSelfFor(subtitleAlignVal);
                 this.subtitleEl.style.textAlign = textAlignFor(subtitleAlignVal);

@@ -8,6 +8,7 @@ import FormattingSettingsSlice = formattingSettings.Slice;
 import FormattingSettingsModel = formattingSettings.Model;
 
 import { BackgroundSettings } from "./shared/backgroundSettings";
+import { BorderSettings } from "./shared/borderSettings";
 import { TitleSettings } from "./shared/titleSettings";
 import { alignSlice, alignSelfFor, textAlignFor } from "./shared/textFormatting";
 import { CardSignatureSettings } from "./shared/cardSignatureSettings";
@@ -250,6 +251,7 @@ export class SubtitleStyleSettings extends FormattingSettingsCard {
 // ─── Model ──────────────────────────────────────────────────
 export class VisualFormattingSettingsModel extends FormattingSettingsModel {
     cardSignature = new CardSignatureSettings();
+    visualBorder = new BorderSettings();
     titleSettings = new TitleSettings();
     cardStyle = new CardStyleSettings();
     background = new BackgroundSettings();
@@ -266,6 +268,7 @@ export class VisualFormattingSettingsModel extends FormattingSettingsModel {
         this.changeSettings,
         this.labelStyle,
         this.subtitleStyle,
-        this.cardSignature
+        this.cardSignature,
+        this.visualBorder
     ];
 }
