@@ -63,6 +63,12 @@ export class CardStyleSettings extends FormattingSettingsCard {
         instanceKind: ConstantOrRule
     });
 
+    // Hidden from the pane 2026-07-12 (Neil: redundant next to Corner
+    // Accents + Border; accent colour is data-driven via the Accent
+    // Colour field well). Card stays in the model so persisted values
+    // still populate and the accent strip renders unchanged.
+    visible: boolean = false;
+
     slices: FormattingSettingsSlice[] = [
         this.accentColor,
         this.accentPosition
