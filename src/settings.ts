@@ -52,6 +52,10 @@ export class CardStyleSettings extends FormattingSettingsCard {
         value: { displayName: "Left", value: "left" }
     });
 
+    // Retired from the pane 2026-07-12 (Neil: dead control — render reads
+    // the shared Background card since the v2 wave). Stays DECLARED
+    // (schema lock) and is READ at render as a migration fallback for old
+    // reports that set it before the shared card existed.
     backgroundColor = new formattingSettings.ColorPicker({
         name: "backgroundColor",
         displayName: "Background Colour",
@@ -61,8 +65,7 @@ export class CardStyleSettings extends FormattingSettingsCard {
 
     slices: FormattingSettingsSlice[] = [
         this.accentColor,
-        this.accentPosition,
-        this.backgroundColor
+        this.accentPosition
     ];
 }
 

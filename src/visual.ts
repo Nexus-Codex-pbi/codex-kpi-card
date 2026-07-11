@@ -304,7 +304,12 @@ export class Visual implements IVisual {
             // through the frozen toRgba() wrapper. `?? default` on both reads
             // means an OLD saved report (properties undefined) renders fully
             // opaque white — the pre-existing default — per D-06.
-            const bgHex = background.backgroundColor.value?.value ?? "#ffffff";
+            // Migration: old reports set cardStyle.backgroundColor (pre-v2);
+            // honour it while the shared Background card is untouched.
+            const sharedBgHex = background.backgroundColor.value?.value ?? "#ffffff";
+            const legacyBgHex = cardStyle.backgroundColor.value.value;
+            const sharedBgUntouched = sharedBgHex.toLowerCase() === "#ffffff" && (background.transparency.value ?? 0) === 0;
+            const bgHex = sharedBgUntouched && legacyBgHex.toLowerCase() !== "#ffffff" ? legacyBgHex : sharedBgHex;
             const bgTransparencyPct = background.transparency.value ?? 0;
             const bgColor = toRgba(bgHex, bgTransparencyPct);
             const accentColor = data.accentColour || cardStyle.accentColor.value.value;
@@ -433,7 +438,12 @@ export class Visual implements IVisual {
                     ? mix(surfaceTokens("dark").text, "#8f8ab8", 0.35) : labelFmt.labelColor.value.value;
                 this.labelEl.style.color = hcColor || adaptiveLabel;
                 applyFont(this.labelEl, labelFmt as unknown as FontFmt);
-                this.labelEl.style.alignSelf = alignSelfFor(labelAlignVal);
+                // Row-flex child: alignSelf is vertical here — horizontal
+                // position comes from auto margins (left keeps the dot
+                // pushed right; center floats between edge and dot).
+                this.headerRow.style.justifyContent = "flex-start";
+                this.labelEl.style.marginLeft = labelAlignVal === "left" ? "0" : "auto";
+                this.labelEl.style.marginRight = labelAlignVal === "right" ? "0" : "auto";
                 this.labelEl.style.textAlign = textAlignFor(labelAlignVal);
                 this.labelEl.style.display = "";
             } else {
@@ -485,7 +495,8 @@ export class Visual implements IVisual {
                     ? mix(surfaceTokens("dark").text, "#8f8ab8", 0.35) : subtitleFmt.subtitleColor.value.value;
                 this.subtitleEl.style.color = hcColor || adaptiveSubtitle;
                 applyFont(this.subtitleEl, subtitleFmt as unknown as FontFmt);
-                this.subtitleEl.style.alignSelf = alignSelfFor(subtitleAlignVal);
+                this.subtitleEl.style.marginLeft = subtitleAlignVal === "left" ? "0" : "auto";
+                this.subtitleEl.style.marginRight = subtitleAlignVal === "center" ? "auto" : "0";
                 this.subtitleEl.style.textAlign = textAlignFor(subtitleAlignVal);
                 this.subtitleEl.style.display = "";
             } else {
@@ -527,7 +538,8 @@ export class Visual implements IVisual {
                 this.pillEl.style.backgroundColor = pillBg;
                 this.pillEl.style.color = pillColor;
                 applyFont(this.pillEl, changeFmt as unknown as FontFmt);
-                this.pillEl.style.alignSelf = alignSelfFor(changeAlignVal);
+                this.pillEl.style.marginLeft = changeAlignVal === "left" ? "0" : "auto";
+                this.pillEl.style.marginRight = changeAlignVal === "center" ? "auto" : "0";
                 this.pillEl.style.display = "";
             } else {
                 this.pillEl.style.display = "none";
