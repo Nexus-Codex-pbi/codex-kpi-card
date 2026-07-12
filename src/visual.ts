@@ -321,6 +321,8 @@ export class Visual implements IVisual {
             applyBorder(this.container, this.formattingSettings.visualBorder, {
                 hcActive: isHighContrast,
                 hcColor: colorPalette?.foreground?.value,
+                palette: this.host.colorPalette,
+                metadataObjects: options.dataViews?.[0]?.metadata?.objects,
             });
             // Accent strip only when the user's Border is OFF — a set
             // border owns all four edges (Neil 2026-07-12: left edge was
