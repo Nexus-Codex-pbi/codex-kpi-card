@@ -322,15 +322,17 @@ export class Visual implements IVisual {
                 hcActive: isHighContrast,
                 hcColor: colorPalette?.foreground?.value,
             });
+            // Accent strip only when the user's Border is OFF — a set
+            // border owns all four edges (Neil 2026-07-12: left edge was
+            // turning into the accent bar with Border on).
             if (!this.formattingSettings.visualBorder.show.value) {
                 this.container.style.borderLeft = "";
                 this.container.style.borderTop = "";
-            }
-
-            if (accentPos === "left") {
-                this.container.style.borderLeft = `4px solid ${accentColor}`;
-            } else if (accentPos === "top") {
-                this.container.style.borderTop = `4px solid ${accentColor}`;
+                if (accentPos === "left") {
+                    this.container.style.borderLeft = `4px solid ${accentColor}`;
+                } else if (accentPos === "top") {
+                    this.container.style.borderTop = `4px solid ${accentColor}`;
+                }
             }
 
             // v3: theme pick + the single HC fallback rule, computed once and
