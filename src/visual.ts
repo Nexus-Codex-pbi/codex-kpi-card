@@ -33,7 +33,7 @@ interface FontFmt { fontFamily?: { value?: string }; fontSize?: { value?: number
 
 function applyFont(el: HTMLElement, f: FontFmt): void {
     if (f.fontFamily?.value) el.style.fontFamily = f.fontFamily.value;
-    if (typeof f.fontSize?.value === "number") el.style.fontSize = `${f.fontSize.value}pt`;
+    if (typeof f.fontSize?.value === "number") el.style.fontSize = `${f.fontSize.value}px`;
     el.style.fontWeight = f.bold?.value ? "700" : "400";
     el.style.fontStyle = f.italic?.value ? "italic" : "normal";
     el.style.textDecoration = f.underline?.value ? "underline" : "none";
@@ -481,9 +481,9 @@ export class Visual implements IVisual {
             // for the user-set font size; otherwise honour the format pane value.
             const vw = options.viewport.width;
             if (vw < 120) {
-                this.valueEl.style.fontSize = `${Math.max(14, fontSize * 0.5)}pt`;
+                this.valueEl.style.fontSize = `${Math.max(19, fontSize * 0.5)}px`;
             } else if (vw < 200) {
-                this.valueEl.style.fontSize = `${Math.max(16, fontSize * 0.7)}pt`;
+                this.valueEl.style.fontSize = `${Math.max(21, fontSize * 0.7)}px`;
             }
 
             // v3 motion: settle the value once when its displayed text changes

@@ -110,7 +110,7 @@ export class ValueFormatSettings extends FormattingSettingsCard {
     });
 
     fontFamily = new formattingSettings.FontPicker({ name: "fontFamily", displayName: "Font Family", value: "Segoe UI, sans-serif" });
-    fontSize = new formattingSettings.NumUpDown({ name: "fontSize", displayName: "Font Size", value: 32 });
+    fontSize = new formattingSettings.NumUpDown({ name: "fontSize", displayName: "Font Size", value: 43 });
     bold = new formattingSettings.ToggleSwitch({ name: "bold", displayName: "Bold", value: true });
     italic = new formattingSettings.ToggleSwitch({ name: "italic", displayName: "Italic", value: false });
     underline = new formattingSettings.ToggleSwitch({ name: "underline", displayName: "Underline", value: false });
@@ -170,7 +170,7 @@ export class ChangeSettings extends FormattingSettingsCard {
     });
 
     fontFamily = new formattingSettings.FontPicker({ name: "fontFamily", displayName: "Font Family", value: "Segoe UI, sans-serif" });
-    fontSize = new formattingSettings.NumUpDown({ name: "fontSize", displayName: "Font Size", value: 12 });
+    fontSize = new formattingSettings.NumUpDown({ name: "fontSize", displayName: "Font Size", value: 16 });
     bold = new formattingSettings.ToggleSwitch({ name: "bold", displayName: "Bold", value: true });
     italic = new formattingSettings.ToggleSwitch({ name: "italic", displayName: "Italic", value: false });
     underline = new formattingSettings.ToggleSwitch({ name: "underline", displayName: "Underline", value: false });
@@ -197,7 +197,7 @@ export class LabelStyleSettings extends FormattingSettingsCard {
     displayName = "Label";
 
     fontFamily = new formattingSettings.FontPicker({ name: "fontFamily", displayName: "Font Family", value: "Segoe UI, sans-serif" });
-    fontSize = new formattingSettings.NumUpDown({ name: "fontSize", displayName: "Font Size", value: 11 });
+    fontSize = new formattingSettings.NumUpDown({ name: "fontSize", displayName: "Font Size", value: 15 });
     bold = new formattingSettings.ToggleSwitch({ name: "bold", displayName: "Bold", value: true });
     italic = new formattingSettings.ToggleSwitch({ name: "italic", displayName: "Italic", value: false });
     underline = new formattingSettings.ToggleSwitch({ name: "underline", displayName: "Underline", value: false });
@@ -230,7 +230,7 @@ export class SubtitleStyleSettings extends FormattingSettingsCard {
     displayName = "Subtitle";
 
     fontFamily = new formattingSettings.FontPicker({ name: "fontFamily", displayName: "Font Family", value: "Segoe UI, sans-serif" });
-    fontSize = new formattingSettings.NumUpDown({ name: "fontSize", displayName: "Font Size", value: 12 });
+    fontSize = new formattingSettings.NumUpDown({ name: "fontSize", displayName: "Font Size", value: 16 });
     bold = new formattingSettings.ToggleSwitch({ name: "bold", displayName: "Bold", value: false });
     italic = new formattingSettings.ToggleSwitch({ name: "italic", displayName: "Italic", value: false });
     underline = new formattingSettings.ToggleSwitch({ name: "underline", displayName: "Underline", value: false });
@@ -257,11 +257,22 @@ export class SubtitleStyleSettings extends FormattingSettingsCard {
     ];
 }
 
+// KPI Card renders every text element in PX (visual.ts applyFont). It previously used PT, which
+// made its text 33% larger than every px sibling at the same setting — see kanban #656. The shared
+// TitleSettings default (14) was authored against that pt path, so it is rescaled ×4/3 HERE ONLY.
+// The shared default must NOT change: the other 20 visuals are already px and already correct.
+class KpiCardTitleSettings extends TitleSettings {
+    constructor() {
+        super();
+        this.titleFontSize.value = 19; // 14pt ≈ 18.7px — keeps existing default reports identical
+    }
+}
+
 // ─── Model ──────────────────────────────────────────────────
 export class VisualFormattingSettingsModel extends FormattingSettingsModel {
     cardSignature = new CardSignatureSettings();
     visualBorder = new BorderSettings();
-    titleSettings = new TitleSettings();
+    titleSettings = new KpiCardTitleSettings();
     cardStyle = new CardStyleSettings();
     background = new BackgroundSettings();
     valueFormat = new ValueFormatSettings();
