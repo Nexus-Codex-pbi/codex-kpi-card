@@ -141,12 +141,12 @@ export class ValueFormatSettings extends FormattingSettingsCard {
 }
 
 // ─── Change Settings ────────────────────────────────────────
-// v3 appearance engine pilot (Plan 15, D-16): changeDirection now also
-// decides which _shared/formatting/bandEngine.ts token (success/danger)
-// tints the pill/dot/corner-bracket/target-strip together — a report
-// saved with the default "Down is Good" keeps reading a decrease as
-// success, deliberately NOT the band engine's literal directionColor()
-// sign read (see visual.ts's `deltaBand` derivation).
+// v3 appearance engine pilot (Plan 15, D-16): changeDirection also decides
+// which _shared/formatting/bandEngine.ts token (success/danger) tints the
+// pill/dot/corner-bracket/target-strip together — deliberately NOT the band
+// engine's literal directionColor() sign read, so a report configured for a
+// cost/churn metric keeps reading a decrease as success (see visual.ts's
+// `deltaBand` derivation).
 export class ChangeSettings extends FormattingSettingsCard {
     name = "changeSettings";
     displayName = "Change Indicator";
@@ -166,7 +166,12 @@ export class ChangeSettings extends FormattingSettingsCard {
             { displayName: "Down is Good", value: "downIsGood" },
             { displayName: "Neutral", value: "neutral" }
         ],
-        value: { displayName: "Down is Good", value: "downIsGood" }
+        // Default is UP IS GOOD (changed 2026-07-28). It shipped as "Down is
+        // Good", which meant a brand-new card painted a growth figure RED out of
+        // the box: the arrow is a literal sign read (visual.ts) so the pill
+        // rendered a red "▲ 12%", contradicting itself. Up-is-good is the
+        // near-universal KPI convention; cost/churn metrics flip the dropdown.
+        value: { displayName: "Up is Good", value: "upIsGood" }
     });
 
     fontFamily = new formattingSettings.FontPicker({ name: "fontFamily", displayName: "Font Family", value: "Segoe UI, sans-serif" });

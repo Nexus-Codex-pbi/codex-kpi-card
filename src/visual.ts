@@ -54,12 +54,11 @@ interface ParsedCard {
 // target/goal measure, so the ONE band-engine colour token is derived from
 // the EXISTING changeDirection (upIsGood/downIsGood/neutral) semantics
 // rather than a literal directionColor(changeValue) sign read — a report
-// saved with the default "Down is Good" setting must keep reading a
-// decrease as success, so the pre-existing good/bad logic stays the
-// source of truth for which band applies (D-16: saved settings still
-// resolve). directionColor() itself remains available in bandEngine.ts
-// for the batch visuals whose delta is a literal direction, not a
-// configurable good/bad flag.
+// configured "Down is Good" for a cost/churn metric must keep reading a
+// decrease as success, so the good/bad flag stays the source of truth for
+// which band applies (D-16: saved settings still resolve).
+// directionColor() itself remains available in bandEngine.ts for the batch
+// visuals whose delta is a literal direction, not a configurable flag.
 type DeltaBand = Band | null;
 
 /** Luminance-based theme pick (same 0.55 threshold convention as utils.ts
@@ -356,7 +355,10 @@ export class Visual implements IVisual {
             // changeDirection property (not a literal sign read) so saved
             // reports using "Down is Good" keep their meaning.
             let deltaBand: DeltaBand = null;
-            const direction = String(changeFmt.changeDirection.value?.value || "downIsGood");
+            // Fallback MUST match the declared default in settings.ts — a drift
+            // between the two would colour the pill differently from what the
+            // pane says is selected.
+            const direction = String(changeFmt.changeDirection.value?.value || "upIsGood");
             if (data.changeValue !== null && direction !== "neutral") {
                 const isPositive = data.changeValue >= 0;
                 const isGood = direction === "upIsGood" ? isPositive : !isPositive;
