@@ -28,6 +28,7 @@ import { makeCornerBrackets, CardSignatureHandle } from "./shared/cardSignature"
 import { applyCardSignature } from "./shared/cardSignatureSettings";
 import { settle } from "./shared/motion";
 import { applyHighContrast, statusGlyph } from "./shared/highContrast";
+import { LicenseGate } from "./shared/licensing";
 
 interface FontFmt { fontFamily?: { value?: string }; fontSize?: { value?: number }; bold?: { value?: boolean }; italic?: { value?: boolean }; underline?: { value?: boolean }; }
 
@@ -108,9 +109,16 @@ export class Visual implements IVisual {
     private stripEl: HTMLElement;
     private stripSegments: HTMLElement[] = [];
     private cornerSignature: CardSignatureHandle | null = null;
+    private licenseGate: LicenseGate;
+    private lastUpdateOptions: VisualUpdateOptions | null = null;
 
     constructor(options: VisualConstructorOptions) {
         this.host = options.host;
+        // NO FREE TIER — an unlicensed user gets the whole visual blocked.
+        // The check is async, so re-run the last update once it resolves.
+        this.licenseGate = new LicenseGate(options.host, () => {
+            if (this.lastUpdateOptions) this.update(this.lastUpdateOptions);
+        });
         this.events = options.host.eventService;
         this.selectionManager = options.host.createSelectionManager();
         this.tooltipService = options.host.tooltipService;
@@ -225,8 +233,16 @@ export class Visual implements IVisual {
 
     public update(options: VisualUpdateOptions) {
         this.events.renderingStarted(options);
+        this.lastUpdateOptions = options;
 
         try {
+            if (this.licenseGate.blockedThisFrame()) {
+                this.container.style.display = "none";
+                this.events.renderingFinished(options);
+                return;
+            }
+            this.container.style.display = "";
+
             const dataView: DataView = options.dataViews && options.dataViews[0];
             if (!dataView) {
                 this.renderEmpty();
