@@ -36,6 +36,29 @@
     max-width: 100%;
 }
 
+.os-kpi-card > :not(.codex-card-signature) {
+    flex-shrink: 0;
+}
+
+.os-kpi-card.os-kpi-compact {
+    padding: 8px 10px;
+}
+
+.os-kpi-card.os-kpi-tight {
+    padding: 2px;
+}
+
+.os-kpi-card.os-kpi-too-small {
+    padding: 0;
+    border-width: 0 !important;
+    align-items: center;
+    justify-content: center;
+}
+
+.os-kpi-too-small .codex-card-signature {
+    display: none !important;
+}
+
 .os-kpi-header {
     display: flex;
     align-items: center;
@@ -68,8 +91,9 @@
 .os-kpi-value {
     font-size: 32px;
     font-weight: 700;
-    letter-spacing: -0.01em;
-    line-height: 0.95;
+    letter-spacing: 0;
+    line-height: 1.15;
+    max-width: 100%;
     white-space: nowrap;
     margin-bottom: 6px;
     font-feature-settings: "tnum";

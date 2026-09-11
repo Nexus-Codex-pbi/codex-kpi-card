@@ -697,6 +697,7 @@ export class Visual implements IVisual {
                 seg.style.border = hc.active ? `1px solid ${hc.color}` : "none";
             });
             this.stripEl.style.display = "";
+            this.fitContent();
 
             // Build tooltip data
             this.cardTooltipItems = [];
@@ -777,6 +778,64 @@ export class Visual implements IVisual {
 
     public getFormattingModel(): powerbi.visuals.FormattingModel {
         return this.formattingSettingsService.buildFormattingModel(this.formattingSettings);
+    }
+
+    private fitContent(): void {
+        const { width, height } = this.lastUpdateOptions.viewport;
+        this.container.classList.toggle("os-kpi-compact", width < 200 || height < 160);
+        this.container.classList.toggle("os-kpi-tight", width < 100 || height < 80);
+        this.container.classList.remove("os-kpi-too-small");
+        this.valueEl.style.display = "";
+        this.valueEl.style.marginBottom = "";
+        this.container.setAttribute("aria-label", this.valueEl.textContent);
+        for (const el of [this.titleEl, this.labelEl, this.subtitleEl, this.valueEl, this.pillEl]) {
+            el.title = el.textContent;
+        }
+
+        const style = getComputedStyle(this.container);
+        const availableWidth = Math.max(0, width - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight)
+            - parseFloat(style.borderLeftWidth) - parseFloat(style.borderRightWidth));
+        const availableHeight = Math.max(0, height - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom)
+            - parseFloat(style.borderTopWidth) - parseFloat(style.borderBottomWidth));
+        const textWidth = () => {
+            const range = document.createRange();
+            range.selectNodeContents(this.valueEl);
+            return range.getBoundingClientRect().width;
+        };
+        const fontSize = parseFloat(getComputedStyle(this.valueEl).fontSize);
+        if (textWidth() > availableWidth) {
+            const fitted = fontSize * Math.max(0, availableWidth - 1) / textWidth();
+            this.valueEl.style.fontSize = `${Math.min(fontSize, Math.max(12, fitted))}px`;
+        }
+        if (this.pillEl.scrollWidth > availableWidth) this.pillEl.style.display = "none";
+
+        const rows = [this.titleEl, this.headerRow, this.valueEl, this.footerRow, this.stripEl];
+        const occupiedHeight = () => rows.reduce((total, el) => {
+            const css = getComputedStyle(el);
+            return css.display === "none" ? total : total + el.getBoundingClientRect().height
+                + parseFloat(css.marginTop) + parseFloat(css.marginBottom);
+        }, 0);
+        // Preserve the metric first; secondary content remains available in the tooltip.
+        for (const el of [this.stripEl, this.subtitleEl, this.titleEl, this.headerRow, this.pillEl]) {
+            if (occupiedHeight() <= availableHeight) break;
+            el.style.display = "none";
+        }
+        if (occupiedHeight() > availableHeight) {
+            this.valueEl.style.marginBottom = "0";
+            const current = parseFloat(getComputedStyle(this.valueEl).fontSize);
+            this.valueEl.style.fontSize = `${Math.min(current, Math.max(12, availableHeight / 1.15))}px`;
+        }
+        if (textWidth() > availableWidth || occupiedHeight() > availableHeight) {
+            for (const el of rows) el.style.display = "none";
+            this.container.classList.add("os-kpi-too-small");
+            this.valueEl.textContent = "...";
+            this.valueEl.style.display = "block";
+            this.valueEl.style.fontSize = "12px";
+            this.valueEl.style.marginBottom = "0";
+            if (textWidth() > width || this.valueEl.getBoundingClientRect().height > height) {
+                this.valueEl.style.display = "none";
+            }
+        }
     }
 
     // ─── Data Parsing ───────────────────────────────────────
@@ -931,5 +990,6 @@ export class Visual implements IVisual {
         applyCardSignature(this.cornerSignature, this.formattingSettings?.cardSignature, {
             autoHex: "#8f8ab8", hcActive: hc.active, hcColor: hc.active ? hc.color : undefined, mirror: true, muted: true,
         });
+        this.fitContent();
     }
 }
