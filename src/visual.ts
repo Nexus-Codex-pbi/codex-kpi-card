@@ -28,6 +28,7 @@ import { makeCornerBrackets, CardSignatureHandle } from "./shared/cardSignature"
 import { applyCardSignature } from "./shared/cardSignatureSettings";
 import { settle } from "./shared/motion";
 import { applyHighContrast, statusGlyph } from "./shared/highContrast";
+import { formatModelNumber } from "./shared/numberFormat";
 import { LicenseGate } from "./shared/licensing";
 
 interface FontFmt { fontFamily?: { value?: string }; fontSize?: { value?: number }; bold?: { value?: boolean }; italic?: { value?: boolean }; underline?: { value?: boolean }; }
@@ -47,6 +48,11 @@ interface ParsedCard {
     subtitle: string | null;
     changeValue: number | null;
     changeLabel: string | null;
+    // The Change Value column's OWN model format string, when the model
+    // carries one. The pill is formatted through it (see autoFormatChange)
+    // so a measure authored as "0.0%" reads as a percentage and one authored
+    // as "$#,##0.00" reads as money, instead of the pill inventing a unit.
+    changeFormat: string | null;
     accentColour: string | null;
     textColour: string | null;
 }
@@ -588,7 +594,7 @@ export class Visual implements IVisual {
 
                 const pillTextStr = data.changeLabel
                     ? String(data.changeLabel)
-                    : this.autoFormatChange(cv);
+                    : this.autoFormatChange(cv, fmtType, data.changeFormat);
 
                 const changeAlignVal = String((changeFmt as any).changeAlign?.value || "left");
                 const glyph = hc.active && deltaBand ? statusGlyph(deltaBand) : "";
@@ -647,7 +653,7 @@ export class Visual implements IVisual {
             if (data.changeValue !== null) {
                 const pillTextStr = data.changeLabel
                     ? String(data.changeLabel)
-                    : this.autoFormatChange(data.changeValue);
+                    : this.autoFormatChange(data.changeValue, fmtType, data.changeFormat);
                 this.cardTooltipItems.push({ displayName: "Change", value: pillTextStr });
             }
 
@@ -696,6 +702,7 @@ export class Visual implements IVisual {
             subtitle: null,
             changeValue: null,
             changeLabel: null,
+            changeFormat: null,
             accentColour: null,
             textColour: null
         };
@@ -718,6 +725,7 @@ export class Visual implements IVisual {
             if (roles["changeValue"]) {
                 result.changeValue = raw !== null && raw !== undefined ? Number(raw) : null;
                 if (isNaN(result.changeValue)) result.changeValue = null;
+                result.changeFormat = table.columns[i].format || null;
             }
             if (roles["changeLabel"]) {
                 result.changeLabel = raw !== null && raw !== undefined ? String(raw) : null;
@@ -761,10 +769,38 @@ export class Visual implements IVisual {
         }
     }
 
-    private autoFormatChange(cv: number): string {
+    // The pill's number, when no Change Label field is bound. The arrow glyph
+    // carries the sign, so the magnitude is printed unsigned — unchanged.
+    //
+    // What changed: the unit used to be chosen by MAGNITUDE. |cv| < 1 printed
+    // "<n>% vs prior" and |cv| >= 1 printed "<n> vs prior", so ONE measure
+    // swapped units as it crossed 1 — measured on the pre-fix bundle, 0.999
+    // rendered "100% vs prior" and 1.0 rendered "1.0 vs prior". That is the
+    // same defect class as NEXUS cycle-01 §1 on the value itself, one layer
+    // down. The unit now follows the report's own declarations, which do not
+    // move with the data:
+    //
+    //   1. the Change Value measure's model format string, when it has one —
+    //      that is the author saying what the number means, and it is what
+    //      Power BI itself would render;
+    //   2. otherwise the Value card's format type: a percent KPI gets a
+    //      percent pill, everything else gets a number pill.
+    //
+    // The no-model-format fallbacks are deliberately today's digit rules, so a
+    // percent report's "12% vs prior" and a number report's "125.0 vs prior"
+    // are byte-identical to what they render now.
+    private autoFormatChange(cv: number, fmtType: string, modelFormat: string | null): string {
         const abs = Math.abs(cv);
-        if (abs < 1) {
+        if (fmtType === "percent") {
+            // A percent model format already carries both the x100 and the
+            // digit count; a non-percent one cannot speak for a percent pill.
+            if (modelFormat && modelFormat.indexOf("%") >= 0) {
+                return formatModelNumber(abs, modelFormat, this.host.locale) + " vs prior";
+            }
             return (abs * 100).toFixed(0) + "% vs prior";
+        }
+        if (modelFormat) {
+            return formatModelNumber(abs, modelFormat, this.host.locale) + " vs prior";
         }
         return abs.toFixed(1) + " vs prior";
     }
