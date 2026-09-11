@@ -20,7 +20,7 @@ import { dataViewWildcard } from "powerbi-visuals-utils-dataviewutils";
 import { ColorHelper } from "powerbi-visuals-utils-colorutils";
 
 import { VisualFormattingSettingsModel, alignSelfFor, textAlignFor } from "./settings";
-import { toRgba, compositeOver, surfaceTone } from "./shared/colorHelpers";
+import { toRgba, compositeOver, surfaceTone, contrastInk } from "./shared/colorHelpers";
 import { Band, Theme, accentToken, bandColor } from "./shared/bandEngine";
 import { surfaceTokens, TABULAR_NUMS, mix } from "./shared/designTokens";
 import { applyBorder } from "./shared/borderSettings";
@@ -73,6 +73,11 @@ type DeltaBand = Band | null;
 // of the suite now judges a COMPOSITED surface with (NEXUS cycle-01 §3).
 
 const STRIP_SEGMENTS = 10;
+
+// Must match the DECLARED default of titleSettings.titleColor in
+// src/shared/titleSettings.ts. A drift between the two would make the title
+// adapt when the user HAD set a colour, or refuse to adapt when they had not.
+const TITLE_DEFAULT_INK = "#1a1a2e";
 
 export class Visual implements IVisual {
     private target: HTMLElement;
@@ -487,7 +492,21 @@ export class Visual implements IVisual {
             // ─── Title (iframe-internal, Policy 1180.2.5) ──
             if (titleFmt.showTitle.value && titleFmt.titleText.value) {
                 this.titleEl.textContent = String(titleFmt.titleText.value);
-                this.titleEl.style.color = hcColor || titleFmt.titleColor.value.value;
+                // The title was the one ink on the card that never adapted: on
+                // an opaque #07071a card the value went pale while the title
+                // stayed #1a1a2e, dark-on-dark (NEXUS cycle-01 §4, still open
+                // at pass two). Adapt only the UNTOUCHED swatch — a title
+                // colour the user actually set, or an fx rule, is a deliberate
+                // choice and is handed through unchanged. The surface judged is
+                // the COMPOSITED one computed above, not the stored fill, for
+                // the same reason §3 needed it: a translucent fill is not
+                // evidence of what the viewer sees. High contrast still wins
+                // over both.
+                const titleSwatch = String(titleFmt.titleColor.value.value);
+                const adaptiveTitle = titleSwatch.toLowerCase() === TITLE_DEFAULT_INK
+                    ? contrastInk(visibleSurfaceHex, TITLE_DEFAULT_INK, surfaceTokens("dark").text)
+                    : titleSwatch;
+                this.titleEl.style.color = hcColor || adaptiveTitle;
                 applyFont(this.titleEl, {
                     fontFamily: titleFmt.titleFontFamily,
                     fontSize: titleFmt.titleFontSize,
