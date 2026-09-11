@@ -245,7 +245,8 @@ export class Visual implements IVisual {
         // that is why a destroyed card still answered a context-menu click and
         // still pushed a tooltip on hover (NEXUS pass-two adjacent coverage 2).
         this.onContextMenu = (e: MouseEvent) => {
-            this.selectionManager.showContextMenu({}, { x: e.clientX, y: e.clientY });
+            const identity = this.container.contains(e.target as Node) ? this.currentSelectionId : null;
+            this.selectionManager.showContextMenu(identity || {}, { x: e.clientX, y: e.clientY });
             e.preventDefault();
         };
         this.target.addEventListener("contextmenu", this.onContextMenu);
