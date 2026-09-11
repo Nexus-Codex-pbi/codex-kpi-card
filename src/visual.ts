@@ -116,6 +116,7 @@ export class Visual implements IVisual {
 
     // Selection ID for click-to-filter (1180.2.2.3)
     private currentSelectionId: ISelectionId | null = null;
+    private selectionRefresh: { run: (() => void) | null } = { run: null };
 
     // v3 motion state — only re-settles the value when its display text changes.
     private lastDisplayValue: string | null = null;
@@ -157,6 +158,13 @@ export class Visual implements IVisual {
         this.localizationManager = options.host.createLocalizationManager();
         this.formattingSettingsService = new FormattingSettingsService();
         this.target = options.element;
+        const selectionRefresh = this.selectionRefresh;
+        selectionRefresh.run = () => {
+            if (this.lastUpdateOptions) this.update(this.lastUpdateOptions);
+        };
+        // Host callbacks and pending promises retain only this disposable bridge.
+        const redrawSelection = () => selectionRefresh.run?.();
+        this.selectionManager.registerOnSelectCallback?.(redrawSelection);
 
         // Build static DOM skeleton
         this.container = document.createElement("div");
@@ -247,7 +255,8 @@ export class Visual implements IVisual {
         // Without a category bound, click is a no-op (matches built-in card behaviour).
         this.onCardClick = (e: MouseEvent) => {
             if (this.currentSelectionId) {
-                this.selectionManager.select(this.currentSelectionId, e.ctrlKey || e.metaKey);
+                this.selectionManager.select(this.currentSelectionId, e.ctrlKey || e.metaKey)
+                    .then(redrawSelection, () => undefined);
                 e.stopPropagation();
             }
         };
@@ -730,6 +739,7 @@ export class Visual implements IVisual {
         // Drop the in-flight licence check FIRST: its redraw callback replays
         // update() against a torn-down target otherwise (NEXUS lifecycle finding).
         this.licenseGate.dispose();
+        this.selectionRefresh.run = null;
 
         // Unregister every listener this visual registered. Cancelling the
         // licence callback stopped the late REDRAW, but the card itself was
