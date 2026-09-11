@@ -20,7 +20,7 @@ import { dataViewWildcard } from "powerbi-visuals-utils-dataviewutils";
 import { ColorHelper } from "powerbi-visuals-utils-colorutils";
 
 import { VisualFormattingSettingsModel, alignSelfFor, textAlignFor } from "./settings";
-import { toRgba, compositeOver, surfaceTone, contrastInk } from "./shared/colorHelpers";
+import { toRgba, compositeOver, surfaceTone, contrastInk, contrastRatio } from "./shared/colorHelpers";
 import { Band, Theme, accentToken, bandColor } from "./shared/bandEngine";
 import { surfaceTokens, TABULAR_NUMS, mix } from "./shared/designTokens";
 import { applyBorder } from "./shared/borderSettings";
@@ -78,6 +78,21 @@ const STRIP_SEGMENTS = 10;
 // src/shared/titleSettings.ts. A drift between the two would make the title
 // adapt when the user HAD set a colour, or refuse to adapt when they had not.
 const TITLE_DEFAULT_INK = "#1a1a2e";
+
+function automaticInk(surface: string, dark: string, light = surfaceTokens("dark").text): string {
+    const ink = contrastInk(surface, dark, light);
+    return contrastRatio(ink, surface) >= 4.5 ? ink : contrastInk(surface, "#000000", "#ffffff");
+}
+
+function signalInk(surface: string, preferred: string): string {
+    const fallback = contrastInk(surface, "#000000", "#ffffff");
+    // Leave a small margin for the browser's alpha-channel rounding.
+    for (let step = 0; step <= 10; step++) {
+        const ink = mix(preferred, fallback, step / 10);
+        if (contrastRatio(ink, surface) >= 4.6) return ink;
+    }
+    return fallback;
+}
 
 export class Visual implements IVisual {
     private target: HTMLElement;
@@ -518,7 +533,7 @@ export class Visual implements IVisual {
                 // over both.
                 const titleSwatch = String(titleFmt.titleColor.value.value);
                 const adaptiveTitle = titleSwatch.toLowerCase() === TITLE_DEFAULT_INK
-                    ? contrastInk(visibleSurfaceHex, TITLE_DEFAULT_INK, surfaceTokens("dark").text)
+                    ? automaticInk(visibleSurfaceHex, TITLE_DEFAULT_INK)
                     : titleSwatch;
                 this.titleEl.style.color = hcColor || adaptiveTitle;
                 applyFont(this.titleEl, {
@@ -540,8 +555,9 @@ export class Visual implements IVisual {
             const labelAlignVal = String((labelFmt as any).labelAlign?.value || "left");
             if (data.label) {
                 this.labelEl.textContent = String(data.label);
-                const adaptiveLabel = labelFmt.labelColor.value.value === "#5e5d5a" && theme === "dark"
-                    ? mix(surfaceTokens("dark").text, "#8f8ab8", 0.35) : labelFmt.labelColor.value.value;
+                const adaptiveLabel = labelFmt.labelColor.value.value.toLowerCase() === "#5e5d5a"
+                    ? automaticInk(visibleSurfaceHex, "#5e5d5a", mix(surfaceTokens("dark").text, "#8f8ab8", 0.35))
+                    : labelFmt.labelColor.value.value;
                 this.labelEl.style.color = hcColor || adaptiveLabel;
                 applyFont(this.labelEl, labelFmt as unknown as FontFmt);
                 // Row-flex child: alignSelf is vertical here — horizontal
@@ -567,8 +583,8 @@ export class Visual implements IVisual {
             const displayValue = this.formatDisplayValue(data.value, fmtType, decimals, currency);
             this.valueEl.textContent = displayValue;
             this.valueEl.style.fontFeatureSettings = TABULAR_NUMS;
-            const adaptiveValue = resolvedValueColor === "#130064" && theme === "dark"
-                ? surfaceTokens("dark").text : resolvedValueColor;
+            const adaptiveValue = resolvedValueColor.toLowerCase() === "#130064"
+                ? automaticInk(visibleSurfaceHex, "#130064") : resolvedValueColor;
             this.valueEl.style.color = hcColor || (data.textColour || adaptiveValue);
             applyFont(this.valueEl, valFmt as unknown as FontFmt);
             this.valueEl.style.alignSelf = alignSelfFor(valueAlignVal);
@@ -597,8 +613,9 @@ export class Visual implements IVisual {
             const subtitleAlignVal = String((subtitleFmt as any).subtitleAlign?.value || "left");
             if (data.subtitle) {
                 this.subtitleEl.textContent = String(data.subtitle);
-                const adaptiveSubtitle = subtitleFmt.subtitleColor.value.value === "#767676" && theme === "dark"
-                    ? mix(surfaceTokens("dark").text, "#8f8ab8", 0.35) : subtitleFmt.subtitleColor.value.value;
+                const adaptiveSubtitle = subtitleFmt.subtitleColor.value.value.toLowerCase() === "#767676"
+                    ? automaticInk(visibleSurfaceHex, "#767676", mix(surfaceTokens("dark").text, "#8f8ab8", 0.35))
+                    : subtitleFmt.subtitleColor.value.value;
                 this.subtitleEl.style.color = hcColor || adaptiveSubtitle;
                 applyFont(this.subtitleEl, subtitleFmt as unknown as FontFmt);
                 this.subtitleEl.style.marginLeft = subtitleAlignVal === "left" ? "0" : "auto";
@@ -630,6 +647,11 @@ export class Visual implements IVisual {
                 if (hc.active) {
                     pillBg = "transparent";
                     pillColor = hc.color;
+                } else {
+                    const pillSurface = direction === "neutral"
+                        ? CODEX_TOKENS.neutralBg
+                        : compositeOver(signalHex, 85, visibleSurfaceHex);
+                    pillColor = signalInk(pillSurface, pillColor);
                 }
 
                 const pillTextStr = data.changeLabel
@@ -901,7 +923,7 @@ export class Visual implements IVisual {
         this.stripEl.style.display = "none";
         this.valueEl.textContent = "Drop a measure into Value";
         this.valueEl.style.fontSize = "13px";
-        this.valueEl.style.color = hc.active ? hc.color : "#999";
+        this.valueEl.style.color = hc.active ? hc.color : "#767676";
         this.container.style.borderLeft = "";
         this.container.style.borderTop = "";
         this.container.style.borderColor = "";
