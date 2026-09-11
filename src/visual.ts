@@ -309,8 +309,14 @@ export class Visual implements IVisual {
             const resolvedValueColor = valueColorHelper.getColorForMeasure(dataView.metadata?.objects, "value");
 
             // ─── High contrast support (routed through the v3 shared rule) ──
+            // Resolved BEFORE anything is painted: the card background is itself
+            // a high-contrast surface, and the shared rule returns foreground and
+            // background as a PAIR. Taking only the foreground later is what put
+            // white text on the retained white card (NEXUS cycle-01 §2).
             const colorPalette = this.host.colorPalette as any;
             const isHighContrast = colorPalette && colorPalette.isHighContrast;
+            const hc = applyHighContrast(colorPalette, { fallbackColor: cardStyle.accentColor.value.value });
+            const hcColor = hc.active ? hc.color : null;
 
             // ─── Container styling ─────────────────────────
             // Dedicated background layer (D-05: never whole-root/target opacity —
@@ -330,7 +336,9 @@ export class Visual implements IVisual {
             const accentColor = data.accentColour || cardStyle.accentColor.value.value;
             const accentPos = String(cardStyle.accentPosition.value?.value || "left");
 
-            this.container.style.backgroundColor = bgColor;
+            // The system background slot replaces the card fill under high
+            // contrast — the user's saved colour is not a high-contrast surface.
+            this.container.style.backgroundColor = hc.active ? hc.background : bgColor;
             // Border card first (sets/clears all four sides), then the
             // accent strip overrides its own edge below.
             applyBorder(this.container, this.formattingSettings.visualBorder, {
@@ -345,10 +353,13 @@ export class Visual implements IVisual {
             if (!this.formattingSettings.visualBorder.show.value) {
                 this.container.style.borderLeft = "";
                 this.container.style.borderTop = "";
+                // The accent strip is a painted edge, so it takes the system
+                // foreground slot under high contrast like every other surface.
+                const stripColor = hcColor || accentColor;
                 if (accentPos === "left") {
-                    this.container.style.borderLeft = `4px solid ${accentColor}`;
+                    this.container.style.borderLeft = `4px solid ${stripColor}`;
                 } else if (accentPos === "top") {
-                    this.container.style.borderTop = `4px solid ${accentColor}`;
+                    this.container.style.borderTop = `4px solid ${stripColor}`;
                 }
             }
 
@@ -363,8 +374,6 @@ export class Visual implements IVisual {
                 ? bgHex
                 : ((colorPalette && colorPalette.background && colorPalette.background.value) || bgHex);
             const theme: Theme = themeFor(themeSourceHex);
-            const hc = applyHighContrast(colorPalette, { fallbackColor: cardStyle.accentColor.value.value });
-            const hcColor = hc.active ? hc.color : null;
 
             // ─── v3 band engine: ONE colour token for dot/pill/accent bar ──
             // See the top-of-file note: good/bad is derived from the EXISTING
@@ -427,7 +436,9 @@ export class Visual implements IVisual {
             // Neil 2026-07-12: "border not showing when set").
             const userBorderOn = this.formattingSettings.visualBorder.show.value;
             if (isSelected) {
-                const ring = accentToken(theme);
+                // Selection ring is a painted border under HC too (its glow is
+                // already dropped below) — route it to the system slot.
+                const ring = hcColor || accentToken(theme);
                 if (!userBorderOn) this.container.style.borderColor = ring;
                 this.container.style.boxShadow = hc.active
                     ? "none"
@@ -743,6 +754,10 @@ export class Visual implements IVisual {
     }
 
     private renderEmpty(): void {
+        // The landing prompt is a painted surface as much as the card is: under
+        // high contrast it was #999 on a hard-coded white panel, inside a black
+        // system canvas (NEXUS cycle-01 §2, same pairing defect as the card).
+        const hc = applyHighContrast(this.host.colorPalette as any, {});
         this.cardTooltipItems = [];
         this.titleEl.style.display = "none";
         this.headerRow.style.display = "none";
@@ -750,12 +765,14 @@ export class Visual implements IVisual {
         this.stripEl.style.display = "none";
         this.valueEl.textContent = "Drop a measure into Value";
         this.valueEl.style.fontSize = "13px";
-        this.valueEl.style.color = "#999";
+        this.valueEl.style.color = hc.active ? hc.color : "#999";
         this.container.style.borderLeft = "";
         this.container.style.borderTop = "";
         this.container.style.borderColor = "";
         this.container.style.boxShadow = "none";
-        this.container.style.backgroundColor = "#ffffff";
-        applyCardSignature(this.cornerSignature, this.formattingSettings?.cardSignature, { autoHex: "#8f8ab8", mirror: true, muted: true });
+        this.container.style.backgroundColor = hc.active ? hc.background : "#ffffff";
+        applyCardSignature(this.cornerSignature, this.formattingSettings?.cardSignature, {
+            autoHex: "#8f8ab8", hcActive: hc.active, hcColor: hc.active ? hc.color : undefined, mirror: true, muted: true,
+        });
     }
 }
