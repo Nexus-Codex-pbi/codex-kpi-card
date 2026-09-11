@@ -881,16 +881,11 @@ export class Visual implements IVisual {
     // are byte-identical to what they render now.
     private autoFormatChange(cv: number, fmtType: string, modelFormat: string | null): string {
         const abs = Math.abs(cv);
-        if (fmtType === "percent") {
-            // A percent model format already carries both the x100 and the
-            // digit count; a non-percent one cannot speak for a percent pill.
-            if (modelFormat && modelFormat.indexOf("%") >= 0) {
-                return formatModelNumber(abs, modelFormat, this.host.locale) + " vs prior";
-            }
-            return (abs * 100).toFixed(0) + "% vs prior";
-        }
         if (modelFormat) {
             return formatModelNumber(abs, modelFormat, this.host.locale) + " vs prior";
+        }
+        if (fmtType === "percent") {
+            return (abs * 100).toFixed(0) + "% vs prior";
         }
         return abs.toFixed(1) + " vs prior";
     }
