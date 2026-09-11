@@ -20,7 +20,7 @@ import { dataViewWildcard } from "powerbi-visuals-utils-dataviewutils";
 import { ColorHelper } from "powerbi-visuals-utils-colorutils";
 
 import { VisualFormattingSettingsModel, alignSelfFor, textAlignFor } from "./settings";
-import { toRgba } from "./shared/colorHelpers";
+import { toRgba, compositeOver, surfaceTone } from "./shared/colorHelpers";
 import { Band, Theme, accentToken, bandColor } from "./shared/bandEngine";
 import { surfaceTokens, TABULAR_NUMS, mix } from "./shared/designTokens";
 import { applyBorder } from "./shared/borderSettings";
@@ -62,16 +62,9 @@ interface ParsedCard {
 // visuals whose delta is a literal direction, not a configurable flag.
 type DeltaBand = Band | null;
 
-/** Luminance-based theme pick (same 0.55 threshold convention as utils.ts
- * contrastText): decides whether the resolved card background reads as a
- * "dark" or "light" surface, so the v3 token set stays legible. */
-function themeFor(hex: string): Theme {
-    const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})/i.exec(hex || "");
-    if (!m) return "dark";
-    const r = parseInt(m[1], 16), g = parseInt(m[2], 16), b = parseInt(m[3], 16);
-    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-    return luminance > 0.55 ? "light" : "dark";
-}
+// The local themeFor() luminance pick is gone: shared/colorHelpers surfaceTone()
+// is the same Rec.601 read at the same 0.55 threshold, and it is what the rest
+// of the suite now judges a COMPOSITED surface with (NEXUS cycle-01 §3).
 
 const STRIP_SEGMENTS = 10;
 
@@ -363,17 +356,26 @@ export class Visual implements IVisual {
                 }
             }
 
-            // v3: theme pick + the single HC fallback rule, computed once and
-            // reused everywhere colour is resolved below.
-            // Theme-source ladder (suite standard, bullet chart v1.0.0.9):
-            // visible own background governs; a USER-SET hex governs even at
-            // full transparency; only the untouched default falls through to
-            // the report theme's palette background.
-            const bgHexIsUserSet = bgHex.toLowerCase() !== "#ffffff";
-            const themeSourceHex = (bgTransparencyPct < 100 || bgHexIsUserSet)
-                ? bgHex
-                : ((colorPalette && colorPalette.background && colorPalette.background.value) || bgHex);
-            const theme: Theme = themeFor(themeSourceHex);
+            // v3: theme pick, computed once and reused everywhere colour is
+            // resolved below — from the surface a viewer actually SEES.
+            // The old ladder read the stored hex whenever it differed from the
+            // default white, so black at 95% transparency over a white page
+            // still chose dark-surface ink and painted #e8e6ff on an almost
+            // white card, and at 100% transparency the invisible black hex
+            // still governed (NEXUS cycle-01 §3). An invisible fill is not
+            // evidence of the backdrop: composite the fill over what is behind
+            // it, then judge the result. Threshold/weights are the suite's own
+            // (surfaceTone is Rec.601 at 0.55, identical to the themeFor() it
+            // replaces), so nothing moves where the fill was already opaque.
+            // LIMIT: colorPalette.background is the only backdrop the host
+            // exposes. A page image, or a shape sitting under the visual, is
+            // not readable from here — an explicit ink override remains the
+            // answer for those reports.
+            const behindHex = (colorPalette && colorPalette.background && colorPalette.background.value) || "#ffffff";
+            const visibleSurfaceHex = hc.active
+                ? hc.background
+                : compositeOver(bgHex, bgTransparencyPct, behindHex);
+            const theme: Theme = surfaceTone(visibleSurfaceHex);
 
             // ─── v3 band engine: ONE colour token for dot/pill/accent bar ──
             // See the top-of-file note: good/bad is derived from the EXISTING
