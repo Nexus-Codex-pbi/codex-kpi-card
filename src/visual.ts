@@ -843,6 +843,16 @@ export class Visual implements IVisual {
         // system canvas (NEXUS cycle-01 §2, same pairing defect as the card).
         const hc = applyHighContrast(this.host.colorPalette as any, {});
         this.cardTooltipItems = [];
+        // The landing prompt is not a data point. The prompt and the tooltips
+        // reset here already, but the selection identity built from the LAST
+        // populated update survived, so clicking the empty card still sent the
+        // old category to the selection manager and the card still advertised
+        // itself as clickable (NEXUS pass-two adjacent coverage 1, receipt
+        // `data-removal-restoration.empty.actions.select`). An identity is only
+        // valid for the row it was built from — drop it with the row, and drop
+        // the pointer affordance that promises it.
+        this.currentSelectionId = null;
+        this.container.style.cursor = "default";
         this.titleEl.style.display = "none";
         this.headerRow.style.display = "none";
         this.footerRow.style.display = "none";
