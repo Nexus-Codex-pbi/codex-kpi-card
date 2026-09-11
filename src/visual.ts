@@ -813,8 +813,9 @@ export class Visual implements IVisual {
                 result.subtitle = raw !== null && raw !== undefined ? String(raw) : null;
             }
             if (roles["changeValue"]) {
-                result.changeValue = raw !== null && raw !== undefined ? Number(raw) : null;
-                if (isNaN(result.changeValue)) result.changeValue = null;
+                const missing = raw === null || raw === undefined || (typeof raw === "string" && raw.trim() === "");
+                const change = missing ? NaN : Number(raw);
+                result.changeValue = Number.isFinite(change) ? change : null;
                 result.changeFormat = table.columns[i].format || null;
             }
             if (roles["changeLabel"]) {
