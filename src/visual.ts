@@ -340,21 +340,9 @@ export class Visual implements IVisual {
                 palette: this.host.colorPalette,
                 metadataObjects: options.dataViews?.[0]?.metadata?.objects,
             });
-            // Accent strip only when the user's Border is OFF — a set
-            // border owns all four edges (Neil 2026-07-12: left edge was
-            // turning into the accent bar with Border on).
-            if (!this.formattingSettings.visualBorder.show.value) {
-                this.container.style.borderLeft = "";
-                this.container.style.borderTop = "";
-                // The accent strip is a painted edge, so it takes the system
-                // foreground slot under high contrast like every other surface.
-                const stripColor = hcColor || accentColor;
-                if (accentPos === "left") {
-                    this.container.style.borderLeft = `4px solid ${stripColor}`;
-                } else if (accentPos === "top") {
-                    this.container.style.borderTop = `4px solid ${stripColor}`;
-                }
-            }
+            // The accent strip is painted LOWER DOWN, after the selection-ring
+            // block — see the note there. Painting it here is what made
+            // "Accent Position: Left", the shipped default, render nothing.
 
             // v3: theme pick, computed once and reused everywhere colour is
             // resolved below — from the surface a viewer actually SEES.
@@ -450,6 +438,38 @@ export class Visual implements IVisual {
                 this.container.style.boxShadow = "none";
             }
             if (!userBorderOn) this.container.style.borderWidth = `${hc.active ? hc.borderWidth : 1}px`;
+
+            // ─── Accent strip (painted AFTER the ring reset) ───────────────
+            // The two lines above own all four edges whenever the user's
+            // Border card is off: the unselected branch removes the inline
+            // border-colour entirely and the width line pins every edge to the
+            // ring width. The strip used to be painted further up, before
+            // both, so the reset wiped it — the shipped default "Accent
+            // Position: Left" computed to `1px solid rgba(0, 0, 0, 0)` on
+            // every unselected card, in both palettes. The defect was the
+            // ORDER, not the colour: paint the strip last and it survives.
+            // Still only when the user's Border is OFF — a set border owns all
+            // four edges (Neil 2026-07-12: left edge was turning into the
+            // accent bar with Border on). "None" is a real dropdown value and
+            // must keep painting nothing; the uniform reset above is exactly
+            // what that leaves behind.
+            if (!userBorderOn && accentPos !== "none") {
+                // The strip is a painted edge, so it takes the system
+                // foreground slot under high contrast like every other
+                // surface. Its WIDTH follows the system border width there
+                // too, so the high-contrast selection ring stays the uniform
+                // hairline the palette asks for rather than growing a 4px
+                // notch on one side.
+                const stripColor = hcColor || accentColor;
+                const stripWidth = hc.active ? hc.borderWidth : 4;
+                if (accentPos === "left") {
+                    this.container.style.borderLeftWidth = `${stripWidth}px`;
+                    this.container.style.borderLeftColor = stripColor;
+                } else if (accentPos === "top") {
+                    this.container.style.borderTopWidth = `${stripWidth}px`;
+                    this.container.style.borderTopColor = stripColor;
+                }
+            }
 
             // ─── Title (iframe-internal, Policy 1180.2.5) ──
             if (titleFmt.showTitle.value && titleFmt.titleText.value) {
