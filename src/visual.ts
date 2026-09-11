@@ -853,10 +853,13 @@ export class Visual implements IVisual {
                 // §1). Values at or below 1 — what a percent measure holds in
                 // practically every saved report — render exactly as before.
                 return (num * 100).toFixed(decimals) + "%";
-            case "currency":
-                return currency + num.toFixed(decimals).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-            default: // number
-                return num.toFixed(decimals).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+            default: {
+                const magnitude = Math.abs(num).toLocaleString(this.host.locale, {
+                    minimumFractionDigits: decimals,
+                    maximumFractionDigits: decimals
+                });
+                return (num < 0 ? "-" : "") + (format === "currency" ? currency : "") + magnitude;
+            }
         }
     }
 
