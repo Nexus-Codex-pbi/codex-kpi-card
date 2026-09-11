@@ -713,7 +713,14 @@ export class Visual implements IVisual {
 
         switch (format) {
             case "percent":
-                return (num * (Math.abs(num) <= 1 ? 100 : 1)).toFixed(decimals) + "%";
+                // Fractional input, always — the Power BI convention (a percent
+                // measure is stored as 0.5 for 50%, as shared/numberFormat.ts
+                // documents for the model-format path). Scaling by 100 only
+                // while |num| <= 1 made ONE measure change units as it crossed
+                // 1: 1.00 read "100.00%" and 1.01 read "1.01%" (NEXUS cycle-01
+                // §1). Values at or below 1 — what a percent measure holds in
+                // practically every saved report — render exactly as before.
+                return (num * 100).toFixed(decimals) + "%";
             case "currency":
                 return currency + num.toFixed(decimals).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
             default: // number
