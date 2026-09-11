@@ -123,6 +123,12 @@ export class Visual implements IVisual {
     private licenseGate: LicenseGate;
     private lastUpdateOptions: VisualUpdateOptions | null = null;
 
+    // Owned listeners, held so destroy() can unregister the same references.
+    private onContextMenu: (e: MouseEvent) => void;
+    private onCardClick: (e: MouseEvent) => void;
+    private onCardMouseMove: (e: MouseEvent) => void;
+    private onCardMouseLeave: () => void;
+
     constructor(options: VisualConstructorOptions) {
         this.host = options.host;
         // NO FREE TIER — an unlicensed user gets the whole visual blocked.
@@ -211,23 +217,29 @@ export class Visual implements IVisual {
         // container — container-only binding leaves any uncovered pixel a
         // dead zone for Policy 1180.2.5 (the old cert-report failure class;
         // caught by verify-pbiviz.js's root-dispatch check).
-        this.target.addEventListener("contextmenu", (e: MouseEvent) => {
+        // Handlers are kept on the instance so destroy() can unregister the
+        // exact same function objects — an inline arrow is unremovable, and
+        // that is why a destroyed card still answered a context-menu click and
+        // still pushed a tooltip on hover (NEXUS pass-two adjacent coverage 2).
+        this.onContextMenu = (e: MouseEvent) => {
             this.selectionManager.showContextMenu({}, { x: e.clientX, y: e.clientY });
             e.preventDefault();
-        });
+        };
+        this.target.addEventListener("contextmenu", this.onContextMenu);
 
         // Click-to-filter (1180.2.2.3 Filter Out) — when a Category is bound,
         // clicking the card filters other visuals on the page by that category.
         // Without a category bound, click is a no-op (matches built-in card behaviour).
-        this.container.addEventListener("click", (e: MouseEvent) => {
+        this.onCardClick = (e: MouseEvent) => {
             if (this.currentSelectionId) {
                 this.selectionManager.select(this.currentSelectionId, e.ctrlKey || e.metaKey);
                 e.stopPropagation();
             }
-        });
+        };
+        this.container.addEventListener("click", this.onCardClick);
 
         // Tooltip on card body
-        this.container.addEventListener("mousemove", (e: MouseEvent) => {
+        this.onCardMouseMove = (e: MouseEvent) => {
             if (this.cardTooltipItems.length > 0) {
                 this.tooltipService.show({
                     coordinates: [e.clientX, e.clientY],
@@ -236,10 +248,12 @@ export class Visual implements IVisual {
                     identities: []
                 });
             }
-        });
-        this.container.addEventListener("mouseleave", () => {
+        };
+        this.container.addEventListener("mousemove", this.onCardMouseMove);
+        this.onCardMouseLeave = () => {
             this.tooltipService.hide({ isTouchEvent: false, immediately: false });
-        });
+        };
+        this.container.addEventListener("mouseleave", this.onCardMouseLeave);
     }
 
     public update(options: VisualUpdateOptions) {
@@ -693,9 +707,37 @@ export class Visual implements IVisual {
         // Drop the in-flight licence check FIRST: its redraw callback replays
         // update() against a torn-down target otherwise (NEXUS lifecycle finding).
         this.licenseGate.dispose();
-        // Clean up DOM references
+
+        // Unregister every listener this visual registered. Cancelling the
+        // licence callback stopped the late REDRAW, but the card itself was
+        // still live: a destroyed instance answered a context-menu click on
+        // the root and pushed a tooltip on hover (NEXUS pass-two adjacent
+        // coverage 2, receipt `destroy-listeners.final.actions`). Each removal
+        // is guarded because destroy() must not throw whatever state the host
+        // is in.
+        try {
+            this.target?.removeEventListener("contextmenu", this.onContextMenu);
+            this.container?.removeEventListener("click", this.onCardClick);
+            this.container?.removeEventListener("mousemove", this.onCardMouseMove);
+            this.container?.removeEventListener("mouseleave", this.onCardMouseLeave);
+        } catch { /* nothing left to unregister */ }
+
+        // Drop the caches those listeners read, so anything still holding a
+        // reference cannot replay a tooltip or a stale selection, and retract
+        // any tooltip that is open at the moment of teardown.
+        this.cardTooltipItems = [];
+        this.currentSelectionId = null;
+        this.lastUpdateOptions = null;
+        this.lastDisplayValue = null;
+        try {
+            this.tooltipService?.hide({ isTouchEvent: false, immediately: true });
+        } catch { /* host service already gone */ }
+
+        // Release the DOM this visual owns. options.element belongs to the
+        // HOST and is never removed — only the card built on top of it.
         this.cornerSignature?.destroy();
         this.cornerSignature = null;
+        this.container?.remove();
         this.container = null;
         this.titleEl = null;
         this.headerRow = null;
