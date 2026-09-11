@@ -81,7 +81,14 @@ export class Visual implements IVisual {
     private selectionManager: ISelectionManager;
     private tooltipService: ITooltipService;
     private localizationManager: ILocalizationManager;
-    private formattingSettings: VisualFormattingSettingsModel;
+    // Initialised in the CONSTRUCTOR, not on first data. The formatting pane
+    // can call getFormattingModel() before any DataView exists, and an
+    // undefined model made the getter throw `Cannot read properties of
+    // undefined (reading 'cards')` on a constructor-only instance and on every
+    // no-DataView update (NEXUS cycle-01 §6, still open at pass two). Defaults
+    // here are the same declared defaults populateFormattingSettingsModel()
+    // starts from, so the first populated update renders exactly as before.
+    private formattingSettings: VisualFormattingSettingsModel = new VisualFormattingSettingsModel();
     private formattingSettingsService: FormattingSettingsService;
 
     // State for tooltips
