@@ -26,7 +26,7 @@ import { surfaceTokens, TABULAR_NUMS, mix } from "./shared/designTokens";
 import { applyBorder } from "./shared/borderSettings";
 import { makeCornerBrackets, CardSignatureHandle } from "./shared/cardSignature";
 import { applyCardSignature } from "./shared/cardSignatureSettings";
-import { resolveCodexTheme, neonColorFor, neonShadow, flareHexFor } from "./shared/codexThemeSettings";
+import { resolveCodexTheme, neonColorFor, neonShadow, flareHexFor, forcedInk } from "./shared/codexThemeSettings";
 import { settle } from "./shared/motion";
 import { applyHighContrast, statusGlyph } from "./shared/highContrast";
 import { formatModelNumber } from "./shared/numberFormat";
@@ -430,11 +430,13 @@ export class Visual implements IVisual {
                 hcActive: hc.active, autoTheme, autoBgHex: bgHex, autoTransparencyPct: bgTransparencyPct, behindHex,
             });
             const theme: Theme = codex.theme;
-            // A forced mode owns the TEXT inks (title, headline, label,
-            // subtitle) against its own surface — a pane ink the user chose for
-            // a white card is not a choice about the Codex dark surface. Accent,
-            // band and fx colours stay the user's. Auto keeps every pane ink.
-            const inkOverride = codex.mode !== "auto";
+            // Contract rule 3 (#819): a forced mode owns the TEXT inks (title,
+            // headline, label, subtitle) against its own surface, but it GUARDS
+            // them rather than replacing them — forcedInk() keeps an ink the user
+            // set explicitly while it still reads at 4.5:1 on that surface, and
+            // falls back to the mode's default only when it does not. Accent,
+            // band and data-bound colours stay the user's (data.textColour still
+            // wins outright on the headline). Auto keeps every pane ink.
             if (codex.mode !== "auto") {
                 visibleSurfaceHex = codex.surfaceHex;
                 this.container.style.backgroundColor = toRgba(codex.bgHex, codex.transparencyPct);
@@ -458,12 +460,22 @@ export class Visual implements IVisual {
             // band to show (no change value, or direction is "neutral") —
             // the existing property still visibly matters (D-16).
             const signalHex = deltaBand ? bandColor(deltaBand, theme) : accentColor;
-            const cornerColor = hcColor || neonColorFor(signalHex, codex);
+            // Contract rule 1 (#819): a band verdict is DATA. Under Neon with
+            // scope "flare" it keeps its own hue and glows in it, so the status
+            // dot and the LED strip still read good/bad instead of going flare
+            // purple. With no band, signalHex IS the user's Accent Colour — an
+            // accent, which the flare may tint.
+            const signalFlare = deltaBand ? signalHex : neonColorFor(signalHex, codex);
+            const cornerColor = hcColor || signalFlare;
             const glowMix = hc.active ? 0 : codex.neon ? codex.glow : (theme === "dark" ? 55 : 0);
 
             // Corner-bracket signature re-tint (created once in the constructor).
+            // The signature is chrome, so it DOES take the flare — but through
+            // flareHex, which resolveCardSignature already ranks above autoHex
+            // (and above a custom Corner Accents colour). autoHex carries the
+            // untinted colour; tinting it too was a no-op in every branch.
             applyCardSignature(this.cornerSignature, this.formattingSettings.cardSignature, {
-                autoHex: neonColorFor(signalHex, codex),
+                autoHex: signalHex,
                 flareHex: flareHexFor(codex),
                 hcActive: hc.active,
                 hcColor: hcColor,
@@ -561,9 +573,12 @@ export class Visual implements IVisual {
                 // evidence of what the viewer sees. High contrast still wins
                 // over both.
                 const titleSwatch = String(titleFmt.titleColor.value.value);
-                const adaptiveTitle = inkOverride || titleSwatch.toLowerCase() === TITLE_DEFAULT_INK
-                    ? automaticInk(visibleSurfaceHex, TITLE_DEFAULT_INK)
-                    : titleSwatch;
+                const adaptiveTitle = forcedInk(
+                    titleSwatch,
+                    automaticInk(visibleSurfaceHex, TITLE_DEFAULT_INK),
+                    codex,
+                    titleSwatch.toLowerCase() === TITLE_DEFAULT_INK
+                );
                 this.titleEl.style.color = hcColor || adaptiveTitle;
                 applyFont(this.titleEl, {
                     fontFamily: titleFmt.titleFontFamily,
@@ -584,9 +599,13 @@ export class Visual implements IVisual {
             const labelAlignVal = String((labelFmt as any).labelAlign?.value || "left");
             if (data.label) {
                 this.labelEl.textContent = String(data.label);
-                const adaptiveLabel = inkOverride || labelFmt.labelColor.value.value.toLowerCase() === "#5e5d5a"
-                    ? automaticInk(visibleSurfaceHex, "#5e5d5a", mix(surfaceTokens("dark").text, "#8f8ab8", 0.35))
-                    : labelFmt.labelColor.value.value;
+                const labelSwatch = labelFmt.labelColor.value.value;
+                const adaptiveLabel = forcedInk(
+                    labelSwatch,
+                    automaticInk(visibleSurfaceHex, "#5e5d5a", mix(surfaceTokens("dark").text, "#8f8ab8", 0.35)),
+                    codex,
+                    labelSwatch.toLowerCase() === "#5e5d5a"
+                );
                 this.labelEl.style.color = hcColor || adaptiveLabel;
                 applyFont(this.labelEl, labelFmt as unknown as FontFmt);
                 // Row-flex child: alignSelf is vertical here — horizontal
@@ -612,8 +631,12 @@ export class Visual implements IVisual {
             const displayValue = this.formatDisplayValue(data.value, fmtType, decimals, currency);
             this.valueEl.textContent = displayValue;
             this.valueEl.style.fontFeatureSettings = TABULAR_NUMS;
-            const adaptiveValue = inkOverride || resolvedValueColor.toLowerCase() === "#130064"
-                ? automaticInk(visibleSurfaceHex, "#130064") : resolvedValueColor;
+            const adaptiveValue = forcedInk(
+                resolvedValueColor,
+                automaticInk(visibleSurfaceHex, "#130064"),
+                codex,
+                resolvedValueColor.toLowerCase() === "#130064"
+            );
             this.valueEl.style.color = hcColor || (data.textColour || adaptiveValue);
             // Neon: the headline flares in its own ink (or the flare colour when scoped).
             this.valueEl.style.textShadow = codex.neon && !hc.active
@@ -646,9 +669,13 @@ export class Visual implements IVisual {
             const subtitleAlignVal = String((subtitleFmt as any).subtitleAlign?.value || "left");
             if (data.subtitle) {
                 this.subtitleEl.textContent = String(data.subtitle);
-                const adaptiveSubtitle = inkOverride || subtitleFmt.subtitleColor.value.value.toLowerCase() === "#767676"
-                    ? automaticInk(visibleSurfaceHex, "#767676", mix(surfaceTokens("dark").text, "#8f8ab8", 0.35))
-                    : subtitleFmt.subtitleColor.value.value;
+                const subtitleSwatch = subtitleFmt.subtitleColor.value.value;
+                const adaptiveSubtitle = forcedInk(
+                    subtitleSwatch,
+                    automaticInk(visibleSurfaceHex, "#767676", mix(surfaceTokens("dark").text, "#8f8ab8", 0.35)),
+                    codex,
+                    subtitleSwatch.toLowerCase() === "#767676"
+                );
                 this.subtitleEl.style.color = hcColor || adaptiveSubtitle;
                 applyFont(this.subtitleEl, subtitleFmt as unknown as FontFmt);
                 this.subtitleEl.style.marginLeft = subtitleAlignVal === "left" ? "0" : "auto";
@@ -669,8 +696,15 @@ export class Visual implements IVisual {
                 let pillBg: string;
                 let pillColor: string;
 
+                // Contract rule 2 (#819): the neutral pill fill carries no
+                // verdict — it is chrome, and #f0eee6 is authored for a light
+                // card. Under a forced mode it takes that mode's own track
+                // token; the ink is re-derived against it by signalInk below.
+                // A banded pill is data and keeps its own colour. Auto untouched.
+                const neutralBg = codex.mode === "auto" ? CODEX_TOKENS.neutralBg : surfaceTokens(theme).track;
+
                 if (direction === "neutral") {
-                    pillBg = CODEX_TOKENS.neutralBg;
+                    pillBg = neutralBg;
                     pillColor = CODEX_TOKENS.neutral;
                 } else {
                     pillBg = `color-mix(in srgb, ${signalHex} 15%, transparent)`;
@@ -682,7 +716,7 @@ export class Visual implements IVisual {
                     pillColor = hc.color;
                 } else {
                     const pillSurface = direction === "neutral"
-                        ? CODEX_TOKENS.neutralBg
+                        ? neutralBg
                         : compositeOver(signalHex, 85, visibleSurfaceHex);
                     pillColor = signalInk(pillSurface, pillColor);
                 }
@@ -999,6 +1033,20 @@ export class Visual implements IVisual {
         // high contrast it was #999 on a hard-coded white panel, inside a black
         // system canvas (NEXUS cycle-01 §2, same pairing defect as the card).
         const hc = applyHighContrast(this.host.colorPalette as any, {});
+        // Contract rule 2 (#819): the landing panel is chrome, and the white
+        // surface below was authored for Auto. Under a forced mode it takes that
+        // mode's own card surface at the card's transparency, with the prompt ink
+        // read against it. Auto resolves to exactly the #ffffff / #767676 pair it
+        // painted before (compositeOver at 0% transparency is the fill itself,
+        // and automaticInk keeps #767676 at 4.5:1 on white). HC still wins.
+        const emptyPalette = this.host.colorPalette as any;
+        const codex = resolveCodexTheme(this.formattingSettings?.codexTheme, {
+            hcActive: hc.active,
+            autoTheme: "light",
+            autoBgHex: "#ffffff",
+            autoTransparencyPct: 0,
+            behindHex: (emptyPalette && emptyPalette.background && emptyPalette.background.value) || "#ffffff",
+        });
         this.cardTooltipItems = [];
         // The landing prompt is not a data point. The prompt and the tooltips
         // reset here already, but the selection identity built from the LAST
@@ -1016,12 +1064,14 @@ export class Visual implements IVisual {
         this.stripEl.style.display = "none";
         this.valueEl.textContent = "Drop a measure into Value";
         this.valueEl.style.fontSize = "13px";
-        this.valueEl.style.color = hc.active ? hc.color : "#767676";
+        this.valueEl.style.color = hc.active ? hc.color : automaticInk(codex.surfaceHex, "#767676");
         this.container.style.borderLeft = "";
         this.container.style.borderTop = "";
         this.container.style.borderColor = "";
         this.container.style.boxShadow = "none";
-        this.container.style.backgroundColor = hc.active ? hc.background : "#ffffff";
+        this.container.style.backgroundColor = hc.active
+            ? hc.background
+            : toRgba(codex.bgHex, codex.transparencyPct);
         applyCardSignature(this.cornerSignature, this.formattingSettings?.cardSignature, {
             autoHex: "#8f8ab8", hcActive: hc.active, hcColor: hc.active ? hc.color : undefined, mirror: true, muted: true,
         });
