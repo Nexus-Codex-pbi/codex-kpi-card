@@ -26,7 +26,7 @@ import { surfaceTokens, TABULAR_NUMS, mix } from "./shared/designTokens";
 import { applyBorder } from "./shared/borderSettings";
 import { makeCornerBrackets, CardSignatureHandle } from "./shared/cardSignature";
 import { applyCardSignature } from "./shared/cardSignatureSettings";
-import { resolveCodexTheme, neonColorFor, neonShadow } from "./shared/codexThemeSettings";
+import { resolveCodexTheme, neonColorFor, neonShadow, flareHexFor } from "./shared/codexThemeSettings";
 import { settle } from "./shared/motion";
 import { applyHighContrast, statusGlyph } from "./shared/highContrast";
 import { formatModelNumber } from "./shared/numberFormat";
@@ -464,6 +464,7 @@ export class Visual implements IVisual {
             // Corner-bracket signature re-tint (created once in the constructor).
             applyCardSignature(this.cornerSignature, this.formattingSettings.cardSignature, {
                 autoHex: neonColorFor(signalHex, codex),
+                flareHex: flareHexFor(codex),
                 hcActive: hc.active,
                 hcColor: hcColor,
                 mirror: true,
