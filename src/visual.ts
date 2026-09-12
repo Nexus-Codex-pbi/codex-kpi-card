@@ -26,6 +26,7 @@ import { surfaceTokens, TABULAR_NUMS, mix } from "./shared/designTokens";
 import { applyBorder } from "./shared/borderSettings";
 import { makeCornerBrackets, CardSignatureHandle } from "./shared/cardSignature";
 import { applyCardSignature } from "./shared/cardSignatureSettings";
+import { resolveCodexTheme, neonColorFor, neonShadow } from "./shared/codexThemeSettings";
 import { settle } from "./shared/motion";
 import { applyHighContrast, statusGlyph } from "./shared/highContrast";
 import { formatModelNumber } from "./shared/numberFormat";
@@ -417,10 +418,27 @@ export class Visual implements IVisual {
             // not readable from here — an explicit ink override remains the
             // answer for those reports.
             const behindHex = (colorPalette && colorPalette.background && colorPalette.background.value) || "#ffffff";
-            const visibleSurfaceHex = hc.active
+            let visibleSurfaceHex = hc.active
                 ? hc.background
                 : compositeOver(bgHex, bgTransparencyPct, behindHex);
-            const theme: Theme = surfaceTone(visibleSurfaceHex);
+            const autoTheme: Theme = surfaceTone(visibleSurfaceHex);
+            // Nexus Codex Theme (#819): a mode switch ABOVE the automatic pick.
+            // Auto returns exactly the values derived above; Dark/Light/Neon
+            // paint the Codex surface at the card's own transparency and force
+            // the token set. HC already collapsed to Auto inside the resolver.
+            const codex = resolveCodexTheme(this.formattingSettings.codexTheme, {
+                hcActive: hc.active, autoTheme, autoBgHex: bgHex, autoTransparencyPct: bgTransparencyPct, behindHex,
+            });
+            const theme: Theme = codex.theme;
+            // A forced mode owns the TEXT inks (title, headline, label,
+            // subtitle) against its own surface — a pane ink the user chose for
+            // a white card is not a choice about the Codex dark surface. Accent,
+            // band and fx colours stay the user's. Auto keeps every pane ink.
+            const inkOverride = codex.mode !== "auto";
+            if (codex.mode !== "auto") {
+                visibleSurfaceHex = codex.surfaceHex;
+                this.container.style.backgroundColor = toRgba(codex.bgHex, codex.transparencyPct);
+            }
 
             // ─── v3 band engine: ONE colour token for dot/pill/accent bar ──
             // See the top-of-file note: good/bad is derived from the EXISTING
@@ -440,12 +458,12 @@ export class Visual implements IVisual {
             // band to show (no change value, or direction is "neutral") —
             // the existing property still visibly matters (D-16).
             const signalHex = deltaBand ? bandColor(deltaBand, theme) : accentColor;
-            const cornerColor = hcColor || signalHex;
-            const glowMix = hc.active ? 0 : (theme === "dark" ? 55 : 0);
+            const cornerColor = hcColor || neonColorFor(signalHex, codex);
+            const glowMix = hc.active ? 0 : codex.neon ? codex.glow : (theme === "dark" ? 55 : 0);
 
             // Corner-bracket signature re-tint (created once in the constructor).
             applyCardSignature(this.cornerSignature, this.formattingSettings.cardSignature, {
-                autoHex: signalHex,
+                autoHex: neonColorFor(signalHex, codex),
                 hcActive: hc.active,
                 hcColor: hcColor,
                 mirror: true,
@@ -517,7 +535,7 @@ export class Visual implements IVisual {
                 // too, so the high-contrast selection ring stays the uniform
                 // hairline the palette asks for rather than growing a 4px
                 // notch on one side.
-                const stripColor = hcColor || accentColor;
+                const stripColor = hcColor || neonColorFor(accentColor, codex);
                 const stripWidth = hc.active ? hc.borderWidth : 4;
                 if (accentPos === "left") {
                     this.container.style.borderLeftWidth = `${stripWidth}px`;
@@ -542,7 +560,7 @@ export class Visual implements IVisual {
                 // evidence of what the viewer sees. High contrast still wins
                 // over both.
                 const titleSwatch = String(titleFmt.titleColor.value.value);
-                const adaptiveTitle = titleSwatch.toLowerCase() === TITLE_DEFAULT_INK
+                const adaptiveTitle = inkOverride || titleSwatch.toLowerCase() === TITLE_DEFAULT_INK
                     ? automaticInk(visibleSurfaceHex, TITLE_DEFAULT_INK)
                     : titleSwatch;
                 this.titleEl.style.color = hcColor || adaptiveTitle;
@@ -565,7 +583,7 @@ export class Visual implements IVisual {
             const labelAlignVal = String((labelFmt as any).labelAlign?.value || "left");
             if (data.label) {
                 this.labelEl.textContent = String(data.label);
-                const adaptiveLabel = labelFmt.labelColor.value.value.toLowerCase() === "#5e5d5a"
+                const adaptiveLabel = inkOverride || labelFmt.labelColor.value.value.toLowerCase() === "#5e5d5a"
                     ? automaticInk(visibleSurfaceHex, "#5e5d5a", mix(surfaceTokens("dark").text, "#8f8ab8", 0.35))
                     : labelFmt.labelColor.value.value;
                 this.labelEl.style.color = hcColor || adaptiveLabel;
@@ -593,9 +611,13 @@ export class Visual implements IVisual {
             const displayValue = this.formatDisplayValue(data.value, fmtType, decimals, currency);
             this.valueEl.textContent = displayValue;
             this.valueEl.style.fontFeatureSettings = TABULAR_NUMS;
-            const adaptiveValue = resolvedValueColor.toLowerCase() === "#130064"
+            const adaptiveValue = inkOverride || resolvedValueColor.toLowerCase() === "#130064"
                 ? automaticInk(visibleSurfaceHex, "#130064") : resolvedValueColor;
             this.valueEl.style.color = hcColor || (data.textColour || adaptiveValue);
+            // Neon: the headline flares in its own ink (or the flare colour when scoped).
+            this.valueEl.style.textShadow = codex.neon && !hc.active
+                ? neonShadow(neonColorFor(this.valueEl.style.color, codex), codex.glow)
+                : "";
             applyFont(this.valueEl, valFmt as unknown as FontFmt);
             this.valueEl.style.alignSelf = alignSelfFor(valueAlignVal);
             this.valueEl.style.textAlign = textAlignFor(valueAlignVal);
@@ -623,7 +645,7 @@ export class Visual implements IVisual {
             const subtitleAlignVal = String((subtitleFmt as any).subtitleAlign?.value || "left");
             if (data.subtitle) {
                 this.subtitleEl.textContent = String(data.subtitle);
-                const adaptiveSubtitle = subtitleFmt.subtitleColor.value.value.toLowerCase() === "#767676"
+                const adaptiveSubtitle = inkOverride || subtitleFmt.subtitleColor.value.value.toLowerCase() === "#767676"
                     ? automaticInk(visibleSurfaceHex, "#767676", mix(surfaceTokens("dark").text, "#8f8ab8", 0.35))
                     : subtitleFmt.subtitleColor.value.value;
                 this.subtitleEl.style.color = hcColor || adaptiveSubtitle;
@@ -788,6 +810,7 @@ export class Visual implements IVisual {
     }
 
     public getFormattingModel(): powerbi.visuals.FormattingModel {
+        this.formattingSettings.codexTheme.reveal();
         return this.formattingSettingsService.buildFormattingModel(this.formattingSettings);
     }
 

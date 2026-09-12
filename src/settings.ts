@@ -8,6 +8,7 @@ import FormattingSettingsSlice = formattingSettings.Slice;
 import FormattingSettingsModel = formattingSettings.Model;
 
 import { BackgroundSettings } from "./shared/backgroundSettings";
+import { CodexThemeSettings } from "./shared/codexThemeSettings";
 import { BorderSettings } from "./shared/borderSettings";
 import { TitleSettings } from "./shared/titleSettings";
 import { alignSlice, alignSelfFor, textAlignFor } from "./shared/textFormatting";
@@ -280,6 +281,7 @@ export class VisualFormattingSettingsModel extends FormattingSettingsModel {
     titleSettings = new KpiCardTitleSettings();
     cardStyle = new CardStyleSettings();
     background = new BackgroundSettings();
+    codexTheme = new CodexThemeSettings();
     valueFormat = new ValueFormatSettings();
     changeSettings = new ChangeSettings();
     labelStyle = new LabelStyleSettings();
@@ -289,6 +291,7 @@ export class VisualFormattingSettingsModel extends FormattingSettingsModel {
         this.titleSettings,
         this.cardStyle,
         this.background,
+        this.codexTheme,
         this.valueFormat,
         this.changeSettings,
         this.labelStyle,
