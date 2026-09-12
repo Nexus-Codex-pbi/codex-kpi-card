@@ -26,7 +26,7 @@ import { surfaceTokens, TABULAR_NUMS, mix } from "./shared/designTokens";
 import { applyBorder } from "./shared/borderSettings";
 import { makeCornerBrackets, CardSignatureHandle } from "./shared/cardSignature";
 import { applyCardSignature } from "./shared/cardSignatureSettings";
-import { resolveCodexTheme, neonColorFor, neonShadow, flareHexFor, forcedInk } from "./shared/codexThemeSettings";
+import { resolveCodexTheme, neonColorFor, neonShadow, flareHexFor, forcedInk, isFxResolved } from "./shared/codexThemeSettings";
 import { settle } from "./shared/motion";
 import { applyHighContrast, statusGlyph } from "./shared/highContrast";
 import { formatModelNumber } from "./shared/numberFormat";
@@ -631,11 +631,21 @@ export class Visual implements IVisual {
             const displayValue = this.formatDisplayValue(data.value, fmtType, decimals, currency);
             this.valueEl.textContent = displayValue;
             this.valueEl.style.fontFeatureSettings = TABULAR_NUMS;
-            const adaptiveValue = forcedInk(
+            // Rule 3's fx exemption, via the suite-wide test (#819 pass 2).
+            // valueColor is instanceKind ConstantOrRule, so `resolvedValueColor`
+            // (ColorHelper.getColorForMeasure, above) can be a host-evaluated
+            // conditional-formatting fill rather than the pane swatch. When it
+            // differs from the pane's static value the colour is DATA: paint it
+            // verbatim under every mode, never through forcedInk. Otherwise it is
+            // a pane ink and the guard applies, with isDefault read from the
+            // PANE swatch — the picker still at its shipped default.
+            const valuePaneHex = String(valFmt.valueColor.value.value);
+            const valueIsFx = isFxResolved(resolvedValueColor, valuePaneHex);
+            const adaptiveValue = valueIsFx ? resolvedValueColor : forcedInk(
                 resolvedValueColor,
                 automaticInk(visibleSurfaceHex, "#130064"),
                 codex,
-                resolvedValueColor.toLowerCase() === "#130064"
+                valuePaneHex.toLowerCase() === "#130064"
             );
             this.valueEl.style.color = hcColor || (data.textColour || adaptiveValue);
             // Neon: the headline flares in its own ink (or the flare colour when scoped).
