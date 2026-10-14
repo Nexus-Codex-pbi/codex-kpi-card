@@ -152,7 +152,7 @@ export class Visual implements IVisual {
         // The check is async, so re-run the last update once it resolves.
         this.licenseGate = new LicenseGate(options.host, () => {
             if (this.lastUpdateOptions) this.update(this.lastUpdateOptions);
-        });
+        }, "kpi-card");
         this.events = options.host.eventService;
         this.selectionManager = options.host.createSelectionManager();
         this.tooltipService = options.host.tooltipService;
@@ -287,7 +287,7 @@ export class Visual implements IVisual {
         this.lastUpdateOptions = options;
 
         try {
-            if (this.licenseGate.blockedThisFrame()) {
+            if (this.licenseGate.blockedThisFrame(options.dataViews)) {
                 this.container.style.display = "none";
                 this.events.renderingFinished(options);
                 return;

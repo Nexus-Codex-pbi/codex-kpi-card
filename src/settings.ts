@@ -11,6 +11,7 @@ import { BackgroundSettings } from "./shared/backgroundSettings";
 import { CodexThemeSettings } from "./shared/codexThemeSettings";
 import { BorderSettings } from "./shared/borderSettings";
 import { TitleSettings } from "./shared/titleSettings";
+import { LicenceSettings } from "./shared/licenceSettings";
 import { alignSlice, alignSelfFor, textAlignFor } from "./shared/textFormatting";
 import { CardSignatureSettings } from "./shared/cardSignatureSettings";
 
@@ -287,6 +288,8 @@ export class VisualFormattingSettingsModel extends FormattingSettingsModel {
     labelStyle = new LabelStyleSettings();
     subtitleStyle = new SubtitleStyleSettings();
 
+    licence = new LicenceSettings();
+
     cards: FormattingSettingsCard[] = [
         this.titleSettings,
         this.cardStyle,
@@ -297,6 +300,7 @@ export class VisualFormattingSettingsModel extends FormattingSettingsModel {
         this.labelStyle,
         this.subtitleStyle,
         this.cardSignature,
-        this.visualBorder
+        this.visualBorder,
+        this.licence
     ];
 }
